@@ -26,13 +26,7 @@ variable "resource_group_name" {
 
 variable "client_id" {
   type        = string
-  description = "Client ID del Service Principal usado por Terraform Cloud"
-}
-
-variable "client_secret" {
-  type        = string
-  description = "Client Secret del Service Principal"
-  sensitive   = true
+  description = "Client ID de la aplicación OIDC"
 }
 
 variable "tenant_id" {
