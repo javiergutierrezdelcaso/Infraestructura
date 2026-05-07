@@ -1,20 +1,25 @@
 variable "app_name" {
-  type = string
+  type        = string
+  description = "Nombre del App Service"
 }
 
 variable "location" {
-  type = string
+  type        = string
+  description = "Región de Azure"
 }
 
 variable "resource_group" {
-  type = string
+  type        = string
+  description = "Nombre del Resource Group"
 }
 
 variable "app_env" {
-  type = string
+  type        = string
+  description = "Entorno de la aplicación (PRE, PRO, DEV)"
 }
 
 variable "sku_name" {
-  type    = string
-  default = "B1"
+  type        = string
+  description = "SKU del App Service Plan"
+  default     = "B1"
 }

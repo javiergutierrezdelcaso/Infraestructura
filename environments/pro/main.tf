@@ -1,9 +1,13 @@
-module "app_service_pro" {
-  source = "../../modules/app_service"
+############################################
+# ENTORNO PRO
+############################################
 
-  app_name       = "ecoanalyzer-pro"
-  location       = var.location
-  resource_group = var.resource_group_name
-  app_env        = "PRO"
-  sku_name       = "B1"
+module "app_service_pro" {
+  source = "../../app_service"
+
+  app_name        = "${var.project_name}-pro"
+  location        = var.location
+  resource_group  = var.resource_group_name
+  app_env         = "PRO"
+  sku_name        = var.sku_name
 }

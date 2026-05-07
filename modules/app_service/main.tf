@@ -1,3 +1,7 @@
+############################################
+# SERVICE PLAN
+############################################
+
 resource "azurerm_service_plan" "plan" {
   name                = "asp-${var.app_name}"
   location            = var.location
@@ -5,6 +9,10 @@ resource "azurerm_service_plan" "plan" {
   os_type             = "Linux"
   sku_name            = var.sku_name
 }
+
+############################################
+# LINUX WEB APP
+############################################
 
 resource "azurerm_linux_web_app" "app" {
   name                = var.app_name
