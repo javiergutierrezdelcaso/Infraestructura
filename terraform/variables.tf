@@ -12,8 +12,8 @@ variable "environment" {
 ############################################
 
 variable "location" {
-  type        = string
-  default     = "spaincentral"
+  type    = string
+  default = "spaincentral"
 }
 
 ############################################
@@ -21,8 +21,8 @@ variable "location" {
 ############################################
 
 variable "resource_group_name" {
-  type        = string
-  default     = "rg-ecoanalyzer"
+  type    = string
+  default = "rg-ecoanalyzer"
 }
 
 ############################################
@@ -30,6 +30,6 @@ variable "resource_group_name" {
 ############################################
 
 variable "sku_name" {
-  type        = string
-  default     = "F1"
+  type    = string
+  default = "F1"
 }
