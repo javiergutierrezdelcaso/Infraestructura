@@ -1,0 +1,9 @@
+---
+- name: Validación y pruebas EcoAnalyzer PRE/PRO
+  hosts: ecoanalyzer
+  gather_facts: false
+
+  roles:
+    - validate
+    - appservice
+    - tests

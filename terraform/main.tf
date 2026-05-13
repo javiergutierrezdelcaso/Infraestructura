@@ -8,29 +8,31 @@ resource "azurerm_resource_group" "rg" {
 }
 
 ############################################
-# ENTORNO PRE
+# APP SERVICE PRE
 ############################################
 
 module "app_service_pre" {
   source = "./modules/app_service"
+  count  = var.environment == "pre" ? 1 : 0
 
-  app_name        = "${var.project_name}-pre"
-  location        = var.location
-  resource_group  = azurerm_resource_group.rg.name
-  app_env         = "PRE"
-  sku_name        = var.sku_name
+  app_name       = "ecoanalyzer-pre"
+  app_env        = "PRE"
+  location       = var.location
+  resource_group = var.resource_group_name
+  sku_name       = var.sku_name
 }
 
 ############################################
-# ENTORNO PRO
+# APP SERVICE PRO
 ############################################
 
 module "app_service_pro" {
   source = "./modules/app_service"
+  count  = var.environment == "pro" ? 1 : 0
 
-  app_name        = "${var.project_name}-pro"
-  location        = var.location
-  resource_group  = azurerm_resource_group.rg.name
-  app_env         = "PRO"
-  sku_name        = var.sku_name
+  app_name       = "ecoanalyzer-pro"
+  app_env        = "PRO"
+  location       = var.location
+  resource_group = var.resource_group_name
+  sku_name       = var.sku_name
 }

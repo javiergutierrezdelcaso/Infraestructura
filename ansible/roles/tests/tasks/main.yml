@@ -1,0 +1,22 @@
+---
+- name: Test de salud
+  ansible.builtin.uri:
+    url: "{{ app_url }}/health"
+    method: GET
+    status_code: 200
+  register: health
+
+- name: Mostrar resultado del health check
+  ansible.builtin.debug:
+    msg: "Health OK: {{ health.status }}"
+
+- name: Test funcional básico
+  ansible.builtin.uri:
+    url: "{{ app_url }}/analyze?text=hola"
+    method: GET
+    status_code: 200
+  register: analyze
+
+- name: Mostrar resultado del test funcional
+  ansible.builtin.debug:
+    msg: "Analyze OK: {{ analyze.json }}"

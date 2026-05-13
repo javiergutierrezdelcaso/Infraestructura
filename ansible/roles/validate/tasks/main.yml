@@ -1,0 +1,20 @@
+---
+- name: Validar que el ZIP generado existe
+  ansible.builtin.stat:
+    path: "{{ lookup('env','ZIP_PATH') }}"
+  register: zip_file
+
+- name: Fallar si el ZIP no existe
+  ansible.builtin.fail:
+    msg: "El ZIP del microservicio no existe en {{ lookup('env','ZIP_PATH') }}"
+  when: not zip_file.stat.exists
+
+- name: Validar que el archivo main.py existe dentro del repo
+  ansible.builtin.stat:
+    path: "./main.py"
+  register: main_file
+
+- name: Fallar si main.py no existe
+  ansible.builtin.fail:
+    msg: "main.py no existe en el repositorio"
+  when: not main_file.stat.exists

@@ -15,11 +15,10 @@ variable "resource_group" {
 
 variable "app_env" {
   type        = string
-  description = "Entorno de la aplicación (PRE, PRO, DEV)"
+  description = "Entorno de la aplicación (PRE o PRO)"
 }
 
 variable "sku_name" {
   type        = string
   description = "SKU del App Service Plan"
-  default     = "B1"
 }

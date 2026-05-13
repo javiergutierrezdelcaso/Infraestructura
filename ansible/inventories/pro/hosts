@@ -1,0 +1,2 @@
+[ecoanalyzer]
+localhost ansible_connection=local

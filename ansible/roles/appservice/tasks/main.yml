@@ -1,0 +1,17 @@
+---
+- name: Esperar a que App Service esté accesible
+  ansible.builtin.wait_for:
+    host: "{{ app_url | regex_replace('https://','') }}"
+    port: 443
+    timeout: 60
+
+- name: Comprobar que el sitio responde
+  ansible.builtin.uri:
+    url: "{{ app_url }}"
+    method: GET
+    status_code: 200
+  register: homepage
+
+- name: Mostrar respuesta de la home
+  ansible.builtin.debug:
+    msg: "Respuesta home: {{ homepage.status }}"
