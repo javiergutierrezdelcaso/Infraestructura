@@ -24,8 +24,6 @@ jobs:
       ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
       ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
 
-      
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,22 +41,13 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan PRE
-        env:
-          ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-          ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
-          ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
-          ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-        run: |
-          terraform plan \
-            -var="environment=pre" \
-            -var="client_id=${ARM_CLIENT_ID}" \
-            -var="client_secret=${ARM_CLIENT_SECRET}" \
-            -var="tenant_id=${ARM_TENANT_ID}" \
-            -var="subscription_id=${ARM_SUBSCRIPTION_ID}"
+        run: terraform plan -var="environment=pre"
+
+      - name: Terraform Drift Check PRE
+        run: terraform plan -var="environment=pre" -detailed-exitcode || true
 
       - name: Install tfsec
-        run: |
-          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+        run: curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
 
       - name: Run tfsec
         run: tfsec .
@@ -84,7 +73,6 @@ jobs:
           tar -xzf gitleaks.tar.gz
           sudo mv gitleaks /usr/local/bin/gitleaks
 
-
       - name: Run Gitleaks
         run: gitleaks detect --source .
 
@@ -99,15 +87,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Instalar Ansible + ansible-lint
+      - name: Install Ansible + linters
         run: |
           sudo apt update
-          sudo apt install -y ansible pipx
+          sudo apt install -y ansible yamllint pipx
           pipx ensurepath
           pipx install ansible-lint
 
+      - name: Lint YAML
+        run: yamllint .
+
       - name: Lint Ansible
         run: ansible-lint .
+
+      - name: Test PRE inventory
+        run: ansible all -i inventories/pre/hosts -m ping
+
+      - name: Test PRO inventory
+        run: ansible all -i inventories/pro/hosts -m ping
 
       - name: Syntax Check PRE
         run: ansible-playbook --syntax-check site.yml -i inventories/pre/hosts
@@ -115,8 +112,14 @@ jobs:
       - name: Syntax Check PRO
         run: ansible-playbook --syntax-check site.yml -i inventories/pro/hosts
 
-      - name: Idempotency Check PRE
+      - name: Idempotency Check PRE (1st run)
         run: ansible-playbook site.yml -i inventories/pre/hosts --check
 
-      - name: Idempotency Check PRO
+      - name: Idempotency Check PRE (2nd run)
+        run: ansible-playbook site.yml -i inventories/pre/hosts --check
+
+      - name: Idempotency Check PRO (1st run)
+        run: ansible-playbook site.yml -i inventories/pro/hosts --check
+
+      - name: Idempotency Check PRO (2nd run)
         run: ansible-playbook site.yml -i inventories/pro/hosts --check

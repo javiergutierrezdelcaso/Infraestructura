@@ -5,5 +5,5 @@
 
   roles:
     - { role: validate,   when: deploy is defined }
-    - appservice
+    - { role: appservice, when: deploy is defined }
     - tests

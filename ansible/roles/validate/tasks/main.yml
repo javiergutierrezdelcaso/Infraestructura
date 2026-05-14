@@ -1,4 +1,8 @@
 ---
+- name: Saltar rol appservice en CI
+  meta: end_play
+  when: deploy is not defined
+
 - name: Validar que el ZIP generado existe
   ansible.builtin.stat:
     path: "{{ lookup('env','ZIP_PATH') }}"
