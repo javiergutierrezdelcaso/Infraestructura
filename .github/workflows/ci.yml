@@ -24,6 +24,8 @@ jobs:
       ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
       ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
 
+      
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,13 +43,25 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan PRE
-        run: terraform plan -var="environment=pre"
-
+        env:
+          ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+          ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+          ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+          ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+        run: |
+          terraform plan \
+            -var="environment=pre" \
+            -var="client_id=${ARM_CLIENT_ID}" \
+            -var="client_secret=${ARM_CLIENT_SECRET}" \
+            -var="tenant_id=${ARM_TENANT_ID}" \
+            -var="subscription_id=${ARM_SUBSCRIPTION_ID}"
+      
       - name: Terraform Drift Check PRE
         run: terraform plan -var="environment=pre" -detailed-exitcode || true
 
       - name: Install tfsec
-        run: curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+        run: |
+          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
 
       - name: Run tfsec
         run: tfsec .
@@ -72,6 +86,7 @@ jobs:
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')_linux_x64.tar.gz -o gitleaks.tar.gz
           tar -xzf gitleaks.tar.gz
           sudo mv gitleaks /usr/local/bin/gitleaks
+
 
       - name: Run Gitleaks
         run: gitleaks detect --source .
