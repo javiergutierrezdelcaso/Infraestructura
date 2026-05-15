@@ -1,8 +1,8 @@
 variable "location" {
-  type        = string
-  default     = "westeurope"
-  description = "Región donde se desplegarán los recursos"
+  type    = string
+  default = "spaincentral"
 }
+
 
 variable "environment" {
   type        = string
