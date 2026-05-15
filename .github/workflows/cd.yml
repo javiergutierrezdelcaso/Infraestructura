@@ -1,4 +1,4 @@
-name: CD - Infraestructura
+name: CD - Infraestructura PRE/PRO
 
 on:
   push:
@@ -10,12 +10,14 @@ permissions:
   contents: read
 
 jobs:
-
   terraform-apply:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform
+    env:
+      ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+      ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+      ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+      ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+
 
     steps:
       - name: Checkout
@@ -24,57 +26,46 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      - name: Select environment
+        id: env
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "develop" ]]; then
+            echo "dir=terraform/environments/pre" >> $GITHUB_OUTPUT
+            echo "env=pre" >> $GITHUB_OUTPUT
+          else
+            echo "dir=terraform/environments/pro" >> $GITHUB_OUTPUT
+            echo "env=pro" >> $GITHUB_OUTPUT
+          fi
+
       - name: Terraform Init
-        run: terraform init
+        working-directory: ${{ steps.env.outputs.dir }}
+        run: terraform init -input=false
 
-      - name: Terraform Apply PRE
-        if: github.ref == 'refs/heads/develop'
-        run: terraform apply -auto-approve -var="environment=pre"
+      - name: Terraform Validate
+        working-directory: ${{ steps.env.outputs.dir }}
+        run: terraform validate
 
-      - name: Terraform Apply PRO
-        if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve -var="environment=pro"
+      - name: Terraform Plan
+        working-directory: ${{ steps.env.outputs.dir }}
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ${{ steps.env.outputs.dir }}
+        run: terraform apply -input=false -auto-approve tfplan
 
       - name: Export Outputs
+        working-directory: ${{ steps.env.outputs.dir }}
         run: terraform output -json > terraform-outputs.json
 
       - name: Upload Outputs
         uses: actions/upload-artifact@v4
         with:
           name: terraform-outputs
-          path: terraform-outputs.json
-
-  health-check:
-    runs-on: ubuntu-latest
-    needs: terraform-apply
-
-    steps:
-      - name: Download Outputs
-        uses: actions/download-artifact@v4
-        with:
-          name: terraform-outputs
-
-      - name: Health Check
-        run: |
-          URL=$(jq -r '.pre_app_url.value // .pro_app_url.value' terraform-outputs.json)
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://$URL)
-          if [ "$STATUS" != "200" ]; then
-            echo "Health check failed"
-            exit 1
-          fi
-
-  rollback:
-    runs-on: ubuntu-latest
-    needs: health-check
-    if: failure()
-
-    steps:
-      - name: Rollback to previous version
-        run: echo "Rollback logic aquí (slots, versiones, etc.)"
+          path: ${{ steps.env.outputs.dir }}/terraform-outputs.json
 
   ansible-deploy:
     runs-on: ubuntu-latest
-    needs: health-check
+    needs: terraform-apply
     defaults:
       run:
         working-directory: ansible
@@ -92,30 +83,10 @@ jobs:
       - name: Install Ansible
         run: |
           sudo apt update
-          sudo apt install -y ansible
+          sudo apt install -y ansible python3-pip
 
-      - name: Set APP_URL (PRE)
-        if: github.ref == 'refs/heads/develop'
-        run: |
-          echo "APP_URL=$(jq -r '.pre_app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
-
-      - name: Set APP_URL (PRO)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "APP_URL=$(jq -r '.pro_app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
-
-      - name: Run Ansible Validation (PRE)
-        if: github.ref == 'refs/heads/develop'
+      - name: Run Ansible with dynamic inventory
         run: |
           ansible-playbook \
-            -i inventories/pre/hosts \
-            site.yml \
-            -e "app_url=${APP_URL}"
-
-      - name: Run Ansible Validation (PRO)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          ansible-playbook \
-            -i inventories/pro/hosts \
-            site.yml \
-            -e "app_url=${APP_URL}"
+            -i playbooks/dynamic_inventory_from_terraform.py \
+            playbooks/site.yml
