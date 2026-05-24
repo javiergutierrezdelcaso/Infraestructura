@@ -21,7 +21,7 @@ resource "azurerm_user_assigned_identity" "identity" {
 }
 
 ############################################
-# APP SETTINGS (SE CONSTRUYEN AQUÍ)
+# APP SETTINGS (SIN TERNARIOS)
 ############################################
 
 locals {
@@ -30,20 +30,20 @@ locals {
   }
 
   keyvault_settings = {
-    GHCR_TOKEN = var.ghcr_token_secret_uri != null ?
-      "@Microsoft.KeyVault(SecretUri=${var.ghcr_token_secret_uri})" : null
-
-    API_KEY = var.api_key_secret_uri != null ?
-      "@Microsoft.KeyVault(SecretUri=${var.api_key_secret_uri})" : null
-
-    JWT_SECRET = var.jwt_secret_secret_uri != null ?
-      "@Microsoft.KeyVault(SecretUri=${var.jwt_secret_secret_uri})" : null
+    GHCR_TOKEN = var.ghcr_token_secret_uri
+    API_KEY    = var.api_key_secret_uri
+    JWT_SECRET = var.jwt_secret_secret_uri
   }
 
-  # Limpia valores null (Terraform no los acepta en app_settings)
+  # Limpia valores null
   merged_settings = {
     for k, v in merge(local.base_settings, local.keyvault_settings) :
-    k => v if v != null
+    k => (
+      v != null ?
+      "@Microsoft.KeyVault(SecretUri=${v})" :
+      null
+    )
+    if v != null
   }
 }
 
@@ -75,12 +75,4 @@ resource "azurerm_linux_web_app" "app" {
   }
 
   app_settings = local.merged_settings
-}
-
-############################################
-# OUTPUTS
-############################################
-
-output "identity_principal_id" {
-  value = azurerm_user_assigned_identity.identity.principal_id
 }

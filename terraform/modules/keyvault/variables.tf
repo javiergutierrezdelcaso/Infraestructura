@@ -9,7 +9,7 @@ variable "environment" {
 }
 
 variable "location" {
-  type        = string
+  type = string
 }
 
 variable "resource_group_name" {
@@ -26,16 +26,16 @@ variable "app_identity_principal_id" {
 }
 
 variable "ghcr_token" {
-  type        = string
-  sensitive   = true
+  type      = string
+  sensitive = true
 }
 
 variable "api_key" {
-  type        = string
-  sensitive   = true
+  type      = string
+  sensitive = true
 }
 
 variable "jwt_secret" {
-  type        = string
-  sensitive   = true
+  type      = string
+  sensitive = true
 }
