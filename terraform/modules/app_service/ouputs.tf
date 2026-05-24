@@ -1,14 +1,12 @@
-output "app_url" {
-  value       = try(azurerm_linux_web_app.app.default_hostname, null)
-  description = "Hostname público del App Service"
-}
-
 output "app_id" {
-  value       = try(azurerm_linux_web_app.app.id, null)
-  description = "ID del App Service"
+  value = azurerm_linux_web_app.app.id
 }
 
-output "plan_id" {
-  value       = try(azurerm_service_plan.plan.id, null)
-  description = "ID del Service Plan"
+output "identity_principal_id" {
+  value = azurerm_user_assigned_identity.identity.principal_id
+}
+
+
+output "identity_id" {
+  value = azurerm_user_assigned_identity.identity.id
 }

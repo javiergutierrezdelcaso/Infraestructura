@@ -33,18 +33,50 @@ variable "sku_name" {
   type    = string
   default = "F1"
 }
-variable "client_id" {
-  type = string
+
+############################################
+# SECRETS (Key Vault)
+############################################
+
+variable "ghcr_token" {
+  type        = string
+  sensitive   = true
+  description = "Token de GHCR para pull de contenedores"
 }
 
-variable "client_secret" {
-  type = string
+variable "api_key" {
+  type        = string
+  sensitive   = true
+  description = "API Key del microservicio"
 }
 
-variable "tenant_id" {
-  type = string
+variable "jwt_secret" {
+  type        = string
+  sensitive   = true
+  description = "JWT secret del microservicio"
 }
 
-variable "subscription_id" {
-  type = string
+############################################
+# AUTENTICACIÓN ARM (NO OIDC)
+############################################
+
+variable "arm_client_id" {
+  type        = string
+  description = "Client ID de la aplicación registrada en Azure"
+}
+
+variable "arm_client_secret" {
+  type        = string
+  sensitive   = true
+  description = "Client Secret de la aplicación registrada en Azure"
+}
+
+variable "arm_tenant_id" {
+  type        = string
+  description = "Tenant ID de Azure"
+}
+
+variable "arm_subscription_id" {
+  type        = string
+  description = "Subscription ID de Azure"
 }
