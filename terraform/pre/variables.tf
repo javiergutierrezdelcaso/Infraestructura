@@ -14,7 +14,7 @@ variable "resource_group_name" {
 }
 
 variable "tenant_id" {
-  type    = string
+  type = string
 }
 
 variable "ghcr_token" {

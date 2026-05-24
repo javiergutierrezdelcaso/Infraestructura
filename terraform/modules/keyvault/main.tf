@@ -45,25 +45,25 @@ resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
 }
 
 resource "azurerm_key_vault_secret" "ghcr_token" {
-  name         = "ghcr-token"
-  value        = var.ghcr_token
-  key_vault_id = azurerm_key_vault.this.id
-  content_type = "token"
+  name            = "ghcr-token"
+  value           = var.ghcr_token
+  key_vault_id    = azurerm_key_vault.this.id
+  content_type    = "token"
   expiration_date = var.secrets_expiration_date
 }
 
 resource "azurerm_key_vault_secret" "api_key" {
-  name         = "api-key"
-  value        = var.api_key
-  key_vault_id = azurerm_key_vault.this.id
-  content_type = "api-key"
+  name            = "api-key"
+  value           = var.api_key
+  key_vault_id    = azurerm_key_vault.this.id
+  content_type    = "api-key"
   expiration_date = var.secrets_expiration_date
 }
 
 resource "azurerm_key_vault_secret" "jwt_secret" {
-  name         = "jwt-secret"
-  value        = var.jwt_secret
-  key_vault_id = azurerm_key_vault.this.id
-  content_type = "jwt-secret"
+  name            = "jwt-secret"
+  value           = var.jwt_secret
+  key_vault_id    = azurerm_key_vault.this.id
+  content_type    = "jwt-secret"
   expiration_date = var.secrets_expiration_date
 }
