@@ -13,7 +13,7 @@ env:
   ARM_CLIENT_SECRET:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
   ARM_TENANT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
   ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-
+  
   TF_VAR_tenant_id:           ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
   TF_VAR_ghcr_token:          ${{ secrets.GHCR_TOKEN }}
   TF_VAR_api_key:             ${{ secrets.API_KEY }}
@@ -25,6 +25,7 @@ env:
   AZURE_STORAGE_ACCOUNT: "tfstatejavier"
   AZURE_STORAGE_CONTAINER: "tfstate"
   AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+
 
 jobs:
 
@@ -89,6 +90,7 @@ jobs:
           else
             echo "No hay lock PRE."
           fi
+
 
 
       ############################################
