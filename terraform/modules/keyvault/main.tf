@@ -1,3 +1,7 @@
+###############################################
+# KEY VAULT
+###############################################
+
 resource "azurerm_key_vault" "this" {
   name                = "kv-${var.project}-${var.environment}"
   location            = var.location
@@ -16,12 +20,16 @@ resource "azurerm_key_vault" "this" {
   }
 }
 
+###############################################
+# SECRETS
+###############################################
+
 resource "azurerm_key_vault_secret" "ghcr_token" {
   name         = "ghcr-token"
   value        = var.ghcr_token
   key_vault_id = azurerm_key_vault.this.id
 
-  content_type = "token"
+  content_type    = "token"
   expiration_date = var.secrets_expiration_date
 }
 
@@ -30,7 +38,7 @@ resource "azurerm_key_vault_secret" "api_key" {
   value        = var.api_key
   key_vault_id = azurerm_key_vault.this.id
 
-  content_type   = "api-key"
+  content_type    = "api-key"
   expiration_date = var.secrets_expiration_date
 }
 
@@ -39,9 +47,13 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   value        = var.jwt_secret
   key_vault_id = azurerm_key_vault.this.id
 
-  content_type   = "jwt-secret"
+  content_type    = "jwt-secret"
   expiration_date = var.secrets_expiration_date
 }
+
+###############################################
+# PRIVATE ENDPOINT (PER ENVIRONMENT)
+###############################################
 
 resource "azurerm_private_endpoint" "this" {
   name                = "${var.project}-${var.environment}-kv-pe"
@@ -56,6 +68,10 @@ resource "azurerm_private_endpoint" "this" {
     is_manual_connection           = false
   }
 }
+
+###############################################
+# OUTPUTS
+###############################################
 
 output "key_vault_id" {
   value = azurerm_key_vault.this.id
