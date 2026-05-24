@@ -42,7 +42,7 @@ module "keyvault_pro" {
   location            = var.location
   resource_group_name = azurerm_resource_group.pro.name
   tenant_id           = var.tenant_id
-
+  client_object_id    = var.client_object_id
   ghcr_token = var.ghcr_token
   api_key    = var.api_key
   jwt_secret = var.jwt_secret

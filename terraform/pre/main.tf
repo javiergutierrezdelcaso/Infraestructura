@@ -24,6 +24,7 @@ module "keyvault_pre" {
   project                    = var.project
   environment                = "pre"
   location                   = var.location
+  client_object_id = var.client_object_id
   resource_group_name        = azurerm_resource_group.pre.name
   tenant_id                  = var.tenant_id
   ghcr_token                 = var.ghcr_token
