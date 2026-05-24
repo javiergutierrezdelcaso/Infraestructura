@@ -52,7 +52,7 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
 }
 
 ###############################################
-# PRIVATE ENDPOINT (PER ENVIRONMENT)
+# PRIVATE ENDPOINT
 ###############################################
 
 resource "azurerm_private_endpoint" "this" {
@@ -66,6 +66,26 @@ resource "azurerm_private_endpoint" "this" {
     private_connection_resource_id = azurerm_key_vault.this.id
     subresource_names              = ["vault"]
     is_manual_connection           = false
+  }
+}
+
+###############################################
+# DIAGNOSTIC SETTINGS (LOGGING KV)
+###############################################
+
+resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
+  name                       = "kv-logs-${var.environment}"
+  target_resource_id         = azurerm_key_vault.this.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  log {
+    category = "AuditEvent"
+    enabled  = true
+  }
+
+  metric {
+    category = "AllMetrics"
+    enabled  = true
   }
 }
 

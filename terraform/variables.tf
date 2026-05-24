@@ -5,11 +5,7 @@ variable "project" {
 
 variable "location" {
   type    = string
-  default = "spaincentral"
-}
-
-variable "environment" {
-  type = string
+  default = "westeurope"
 }
 
 variable "arm_client_id" {

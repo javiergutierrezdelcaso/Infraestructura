@@ -110,7 +110,8 @@ jobs:
 
 
       - name: Terrascan
-        run: terrascan scan -d .
+        run: terrascan scan -d . -i terraform
+
 
       # GITLEAKS
       - name: Instalar Gitleaks

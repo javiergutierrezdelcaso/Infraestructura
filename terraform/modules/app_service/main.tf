@@ -16,6 +16,8 @@ resource "azurerm_linux_web_app" "this" {
 
   site_config {
     ftps_state        = "Disabled"
+    always_on         = true
+    minimum_tls_version = "1.2"
     health_check_path = "/health"
   }
 }

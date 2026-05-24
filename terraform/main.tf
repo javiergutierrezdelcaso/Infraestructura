@@ -13,79 +13,35 @@ resource "azurerm_resource_group" "pro" {
 }
 
 ###############################################
-# KEY VAULT PRE
+# RESOURCE GROUP LOCKS (TERRASCAN)
 ###############################################
 
-module "keyvault_pre" {
-  source = "./modules/keyvault"
+resource "azurerm_management_lock" "rg_pre_lock" {
+  name       = "${var.project}-pre-lock"
+  scope      = azurerm_resource_group.pre.id
+  lock_level = "CanNotDelete"
+}
 
-  project             = var.project
-  environment         = "pre"
+resource "azurerm_management_lock" "rg_pro_lock" {
+  name       = "${var.project}-pro-lock"
+  scope      = azurerm_resource_group.pro.id
+  lock_level = "CanNotDelete"
+}
+
+###############################################
+# LOG ANALYTICS WORKSPACE (PARA LOGGING KV)
+###############################################
+
+resource "azurerm_log_analytics_workspace" "law" {
+  name                = "${var.project}-law"
   location            = var.location
   resource_group_name = azurerm_resource_group.pre.name
-  tenant_id           = var.arm_tenant_id
-
-  ghcr_token = var.ghcr_token
-  api_key    = var.api_key
-  jwt_secret = var.jwt_secret
-
-  allowed_ip_ranges       = []
-  secrets_expiration_date = "2026-12-31T00:00:00Z"
-
-  subnet_id = azurerm_subnet.kv_subnet.id
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
 }
 
 ###############################################
-# KEY VAULT PRO
-###############################################
-
-module "keyvault_pro" {
-  source = "./modules/keyvault"
-
-  project             = var.project
-  environment         = "pro"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.pro.name
-  tenant_id           = var.arm_tenant_id
-
-  ghcr_token = var.ghcr_token
-  api_key    = var.api_key
-  jwt_secret = var.jwt_secret
-
-  allowed_ip_ranges       = []
-  secrets_expiration_date = "2026-12-31T00:00:00Z"
-
-  subnet_id = azurerm_subnet.kv_subnet_pro.id
-}
-
-###############################################
-# APP SERVICE PRE
-###############################################
-
-module "app_service_pre" {
-  source = "./modules/app_service"
-
-  project             = var.project
-  environment         = "pre"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.pre.name
-}
-
-###############################################
-# APP SERVICE PRO
-###############################################
-
-module "app_service_pro" {
-  source = "./modules/app_service"
-
-  project             = var.project
-  environment         = "pro"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.pro.name
-}
-
-###############################################
-# NETWORKING FOR PRIVATE ENDPOINT (PRE)
+# NETWORKING PRE (KV PRIVATE ENDPOINT)
 ###############################################
 
 resource "azurerm_virtual_network" "kv_vnet" {
@@ -128,7 +84,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_link" {
 }
 
 ###############################################
-# NETWORKING FOR PRIVATE ENDPOINT (PRO)
+# NETWORKING PRO (KV PRIVATE ENDPOINT)
 ###############################################
 
 resource "azurerm_virtual_network" "kv_vnet_pro" {
@@ -168,4 +124,78 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_link_pro" {
   resource_group_name   = azurerm_resource_group.pro.name
   private_dns_zone_name = azurerm_private_dns_zone.kv_dns_pro.name
   virtual_network_id    = azurerm_virtual_network.kv_vnet_pro.id
+}
+
+###############################################
+# KEY VAULT PRE
+###############################################
+
+module "keyvault_pre" {
+  source = "./modules/keyvault"
+
+  project             = var.project
+  environment         = "pre"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pre.name
+  tenant_id           = var.arm_tenant_id
+
+  ghcr_token = var.ghcr_token
+  api_key    = var.api_key
+  jwt_secret = var.jwt_secret
+
+  allowed_ip_ranges       = []
+  secrets_expiration_date = "2026-12-31T00:00:00Z"
+
+  subnet_id                   = azurerm_subnet.kv_subnet.id
+  log_analytics_workspace_id  = azurerm_log_analytics_workspace.law.id
+}
+
+###############################################
+# KEY VAULT PRO
+###############################################
+
+module "keyvault_pro" {
+  source = "./modules/keyvault"
+
+  project             = var.project
+  environment         = "pro"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pro.name
+  tenant_id           = var.arm_tenant_id
+
+  ghcr_token = var.ghcr_token
+  api_key    = var.api_key
+  jwt_secret = var.jwt_secret
+
+  allowed_ip_ranges       = []
+  secrets_expiration_date = "2026-12-31T00:00:00Z"
+
+  subnet_id                   = azurerm_subnet.kv_subnet_pro.id
+  log_analytics_workspace_id  = azurerm_log_analytics_workspace.law.id
+}
+
+###############################################
+# APP SERVICE PRE
+###############################################
+
+module "app_service_pre" {
+  source = "./modules/app_service"
+
+  project             = var.project
+  environment         = "pre"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pre.name
+}
+
+###############################################
+# APP SERVICE PRO
+###############################################
+
+module "app_service_pro" {
+  source = "./modules/app_service"
+
+  project             = var.project
+  environment         = "pro"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pro.name
 }
