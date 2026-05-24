@@ -165,7 +165,9 @@ jobs:
           sudo mv terrascan /usr/local/bin/terrascan
 
       - name: Terrascan
-        run: terrascan scan -d ./ -i terraform 
+        working-directory: .
+        run: terrascan scan -d terraform -i terraform
+
 
       - name: Instalar Gitleaks
         run: |
