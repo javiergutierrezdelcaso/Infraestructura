@@ -168,9 +168,8 @@ jobs:
       - name: Debug estructura
         working-directory: terraform
         run: |
-          echo "Contenido de terraform/modules:"
-          ls -R terraform/modules
-
+          pwd
+          ls -R .
       - name: Validar referencias Key Vault en Terraform
         working-directory: terraform
         run: |
