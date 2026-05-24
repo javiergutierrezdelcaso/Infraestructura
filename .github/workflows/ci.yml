@@ -172,6 +172,7 @@ jobs:
           ls -R terraform/modules
 
       - name: Validar referencias Key Vault en Terraform
+        working-directory: terraform
         run: |
           grep -R "Microsoft.KeyVault" -n terraform/modules/app_service
           grep -R "key_vault_reference" -n terraform
