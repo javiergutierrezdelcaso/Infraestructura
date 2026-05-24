@@ -126,3 +126,55 @@ resource "azurerm_private_endpoint" "kv_pe" {
   }
 }
 
+resource "azurerm_virtual_network" "kv_vnet_pro" {
+  name                = "${var.project}-pro-vnet"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pro.name
+  address_space       = ["10.20.0.0/16"]
+}
+
+resource "azurerm_network_security_group" "kv_nsg_pro" {
+  name                = "${var.project}-pro-kv-nsg"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pro.name
+}
+
+resource "azurerm_subnet" "kv_subnet_pro" {
+  name                 = "kv-subnet-pro"
+  resource_group_name  = azurerm_resource_group.pro.name
+  virtual_network_name = azurerm_virtual_network.kv_vnet_pro.name
+  address_prefixes     = ["10.20.1.0/24"]
+
+  private_endpoint_network_policies_enabled = true
+}
+
+resource "azurerm_subnet_network_security_group_association" "kv_subnet_nsg_pro" {
+  subnet_id                 = azurerm_subnet.kv_subnet_pro.id
+  network_security_group_id = azurerm_network_security_group.kv_nsg_pro.id
+}
+
+resource "azurerm_private_dns_zone" "kv_dns_pro" {
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.pro.name
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_link_pro" {
+  name                  = "kv-dns-link-pro"
+  resource_group_name   = azurerm_resource_group.pro.name
+  private_dns_zone_name = azurerm_private_dns_zone.kv_dns_pro.name
+  virtual_network_id    = azurerm_virtual_network.kv_vnet_pro.id
+}
+
+resource "azurerm_private_endpoint" "kv_pe_pro" {
+  name                = "${var.project}-pro-kv-pe"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pro.name
+  subnet_id           = azurerm_subnet.kv_subnet_pro.id
+
+  private_service_connection {
+    name                           = "kv-connection-pro"
+    private_connection_resource_id = module.keyvault_pro.key_vault_id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
+  }
+}
