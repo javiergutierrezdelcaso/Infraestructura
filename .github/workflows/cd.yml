@@ -49,6 +49,12 @@ jobs:
       - name: Terraform Init
         working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform init -input=false
+      - name: Login Azure CLI
+        run: |
+          az login --service-principal \
+            --username "${{ env.ARM_CLIENT_ID }}" \
+            --password "${{ env.ARM_CLIENT_SECRET }}" \
+            --tenant "${{ env.ARM_TENANT_ID }}"
 
       - name: Limpiar estado si el RG no existe en Azure
         working-directory: ${{ steps.entorno.outputs.dir }}
