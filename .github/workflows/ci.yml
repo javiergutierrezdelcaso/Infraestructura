@@ -166,6 +166,7 @@ jobs:
       - name: Gitleaks
         run: gitleaks detect --source . --no-banner
       - name: Debug estructura
+        working-directory: terraform
         run: |
           echo "Contenido de terraform/modules:"
           ls -R terraform/modules
