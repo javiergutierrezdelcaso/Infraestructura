@@ -1,116 +1,93 @@
-############################################
-# RESOURCE GROUP
-############################################
+###############################################
+# RESOURCE GROUPS
+###############################################
 
-resource "azurerm_resource_group" "rg" {
-  name     = var.resource_group_name
+resource "azurerm_resource_group" "pre" {
+  name     = "${var.project}-pre-rg"
   location = var.location
 }
 
-############################################
-# APP SERVICE PRE (IDENTIDAD)
-############################################
-
-module "app_service_pre" {
-  source = "./modules/app_service"
-  count  = var.environment == "pre" ? 1 : 0
-
-  app_name       = "ecoanalyzer-pre"
-  app_env        = "PRE"
-  location       = var.location
-  resource_group = var.resource_group_name
-  sku_name       = var.sku_name
+resource "azurerm_resource_group" "pro" {
+  name     = "${var.project}-pro-rg"
+  location = var.location
 }
 
-############################################
+###############################################
 # KEY VAULT PRE
-############################################
+###############################################
 
 module "keyvault_pre" {
   source = "./modules/keyvault"
-  count  = var.environment == "pre" ? 1 : 0
 
-  project                   = "ecoanalyzer"
-  environment               = "pre"
-  location                  = var.location
-  resource_group_name       = var.resource_group_name
-  tenant_id                 = var.arm_tenant_id
-  app_identity_principal_id = module.app_service_pre[0].identity_principal_id
+  project             = var.project
+  environment         = "pre"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pre.name
+  tenant_id           = var.arm_tenant_id
 
   ghcr_token = var.ghcr_token
   api_key    = var.api_key
   jwt_secret = var.jwt_secret
+
+  allowed_ip_ranges       = []
+  secrets_expiration_date = "2026-12-31T00:00:00Z"
 }
 
-############################################
-# APP SERVICE PRE (ACTUALIZADO CON SECRETURI)
-############################################
-
-module "app_service_pre_update" {
-  source = "./modules/app_service"
-  count  = var.environment == "pre" ? 1 : 0
-
-  app_name       = "ecoanalyzer-pre"
-  app_env        = "PRE"
-  location       = var.location
-  resource_group = var.resource_group_name
-  sku_name       = var.sku_name
-
-  ghcr_token_secret_uri = module.keyvault_pre[0].ghcr_token_secret_uri
-  api_key_secret_uri    = module.keyvault_pre[0].api_key_secret_uri
-  jwt_secret_secret_uri = module.keyvault_pre[0].jwt_secret_secret_uri
-}
-
-############################################
-# APP SERVICE PRO (IDENTIDAD)
-############################################
-
-module "app_service_pro" {
-  source = "./modules/app_service"
-  count  = var.environment == "pro" ? 1 : 0
-
-  app_name       = "ecoanalyzer-pro"
-  app_env        = "PRO"
-  location       = var.location
-  resource_group = var.resource_group_name
-  sku_name       = var.sku_name
-}
-
-############################################
+###############################################
 # KEY VAULT PRO
-############################################
+###############################################
 
 module "keyvault_pro" {
   source = "./modules/keyvault"
-  count  = var.environment == "pro" ? 1 : 0
 
-  project                   = "ecoanalyzer"
-  environment               = "pro"
-  location                  = var.location
-  resource_group_name       = var.resource_group_name
-  tenant_id                 = var.arm_tenant_id
-  app_identity_principal_id = module.app_service_pro[0].identity_principal_id
+  project             = var.project
+  environment         = "pro"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pro.name
+  tenant_id           = var.arm_tenant_id
 
   ghcr_token = var.ghcr_token
   api_key    = var.api_key
   jwt_secret = var.jwt_secret
+
+  allowed_ip_ranges       = []
+  secrets_expiration_date = "2026-12-31T00:00:00Z"
 }
 
-############################################
-# APP SERVICE PRO (ACTUALIZADO CON SECRETURI)
-############################################
+###############################################
+# APP SERVICE PRE
+###############################################
 
-module "app_service_pro_update" {
+module "app_service_pre" {
   source = "./modules/app_service"
-  count  = var.environment == "pro" ? 1 : 0
 
-  app_name       = "ecoanalyzer-pro"
-  app_env        = "PRO"
-  location       = var.location
-  resource_group = var.resource_group_name
-  sku_name       = var.sku_name
+  project             = var.project
+  environment         = "pre"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pre.name
+}
 
-  ghcr_token_secret_uri = module.keyvault_pro[0].ghcr_token_secret_uri
-  api_key_secret_uri    = module.keyvault_pro[0].api_key_secret_uri
-  jwt_secret_secret_uri = module.keyvault_pro[0].jwt_secret_secret_uri
+###############################################
+# APP SERVICE PRO
+###############################################
+
+module "app_service_pro" {
+  source = "./modules/app_service"
+
+  project             = var.project
+  environment         = "pro"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pro.name
+}
+
+###############################################
+# OUTPUTS
+###############################################
+
+output "pre_app_url" {
+  value = module.app_service_pre.app_url
+}
+
+output "pro_app_url" {
+  value = module.app_service_pro.app_url
 }
