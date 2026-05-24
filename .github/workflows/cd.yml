@@ -9,6 +9,7 @@ on:
 permissions:
   id-token: write
   contents: read
+
 env:
   ARM_CLIENT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
   ARM_CLIENT_SECRET:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
@@ -21,17 +22,12 @@ env:
   TF_VAR_tenant_id:           ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
   TF_VAR_arm_subscription_id: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
 
-  TF_VAR_subnet_id: ${{ github.ref == 'refs/heads/develop' && secrets.SUBNET_ID_PRE || secrets.SUBNET_ID_PRO }}
-  TF_VAR_log_analytics_workspace_id: ${{ github.ref == 'refs/heads/develop' && secrets.LOG_ID_PRE || secrets.LOG_ID_PRO }}
-
   TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
   TF_VAR_api_key:    ${{ secrets.API_KEY }}
   TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+
 jobs:
 
-  # ============================================================
-  # 1. DESPLIEGUE DE INFRAESTRUCTURA (TERRAFORM)
-  # ============================================================
   infraestructura:
     name: Despliegue de Infraestructura (Terraform)
     runs-on: ubuntu-latest
@@ -43,16 +39,31 @@ jobs:
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # ============================
+      # SELECCIÓN PRE/PRO
+      # ============================
       - name: Seleccionar entorno PRE/PRO
         id: entorno
         run: |
           if [[ "${GITHUB_REF_NAME}" == "develop" ]]; then
             echo "dir=terraform/pre" >> $GITHUB_OUTPUT
             echo "env=pre" >> $GITHUB_OUTPUT
+            echo "subnet=${{ secrets.SUBNET_ID_PRE }}" >> $GITHUB_OUTPUT
+            echo "log=${{ secrets.LOG_ID_PRE }}" >> $GITHUB_OUTPUT
           else
             echo "dir=terraform/pro" >> $GITHUB_OUTPUT
             echo "env=pro" >> $GITHUB_OUTPUT
+            echo "subnet=${{ secrets.SUBNET_ID_PRO }}" >> $GITHUB_OUTPUT
+            echo "log=${{ secrets.LOG_ID_PRO }}" >> $GITHUB_OUTPUT
           fi
+
+      # ============================
+      # EXPORTAR VARIABLES PRE/PRO
+      # ============================
+      - name: Exportar variables PRE/PRO
+        run: |
+          echo "TF_VAR_subnet_id=${{ steps.entorno.outputs.subnet }}" >> $GITHUB_ENV
+          echo "TF_VAR_log_analytics_workspace_id=${{ steps.entorno.outputs.log }}" >> $GITHUB_ENV
 
       - name: Inicializar Terraform
         working-directory: ${{ steps.entorno.outputs.dir }}
@@ -76,9 +87,6 @@ jobs:
           name: terraform-outputs
           path: ${{ steps.entorno.outputs.dir }}/terraform-outputs.json
 
-  # ============================================================
-  # 2. CONFIGURACIÓN DE SERVIDORES (ANSIBLE)
-  # ============================================================
   configuracion:
     name: Configuración de Servidores (Ansible)
     runs-on: ubuntu-latest
@@ -113,9 +121,6 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: ansible-playbook -i inventories/pro/hosts site.yml -e "app_url=${APP_URL}"
 
-  # ============================================================
-  # 3. PRUEBAS POST-DEPLOY PROFESIONALES
-  # ============================================================
   postdeploy:
     name: Pruebas Post‑Despliegue (Health, Seguridad, DNS, SSL, Puertos, Logs)
     runs-on: ubuntu-latest
