@@ -1,9 +1,9 @@
 resource "azurerm_service_plan" "this" {
-  name                = "${var.project}-${var.environment}-plan"
+  name                = "asp-${var.project}-${var.environment}"
   location            = var.location
   resource_group_name = var.resource_group_name
   os_type             = "Linux"
-  sku_name            = "B1"
+  sku_name            = var.sku_name
 }
 
 resource "azurerm_linux_web_app" "this" {
@@ -15,22 +15,8 @@ resource "azurerm_linux_web_app" "this" {
   https_only = true
 
   site_config {
-    ftps_state          = "Disabled"
-    always_on           = true
-    minimum_tls_version = "1.2"
-
-    # Health Check requerido por nuevas versiones del provider
-    health_check_path                 = "/health"
-    health_check_eviction_time_in_min = 2
+    always_on = true
+    ftps_state = "Disabled"
+    health_check_path = "/health"
   }
-
-  app_settings = {
-    GHCR_TOKEN = "@Microsoft.KeyVault(SecretUri=${var.ghcr_token_secret_uri})"
-    API_KEY    = "@Microsoft.KeyVault(SecretUri=${var.api_key_secret_uri})"
-    JWT_SECRET = "@Microsoft.KeyVault(SecretUri=${var.jwt_secret_secret_uri})"
-  }
-}
-
-output "app_url" {
-  value = azurerm_linux_web_app.this.default_hostname
 }

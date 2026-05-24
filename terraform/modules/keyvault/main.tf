@@ -1,7 +1,3 @@
-###############################################
-# KEY VAULT
-###############################################
-
 resource "azurerm_key_vault" "this" {
   name                = "kv-${var.project}-${var.environment}"
   location            = var.location
@@ -20,41 +16,6 @@ resource "azurerm_key_vault" "this" {
   }
 }
 
-###############################################
-# SECRETS
-###############################################
-
-resource "azurerm_key_vault_secret" "ghcr_token" {
-  name         = "ghcr-token"
-  value        = var.ghcr_token
-  key_vault_id = azurerm_key_vault.this.id
-
-  content_type    = "token"
-  expiration_date = var.secrets_expiration_date
-}
-
-resource "azurerm_key_vault_secret" "api_key" {
-  name         = "api-key"
-  value        = var.api_key
-  key_vault_id = azurerm_key_vault.this.id
-
-  content_type    = "api-key"
-  expiration_date = var.secrets_expiration_date
-}
-
-resource "azurerm_key_vault_secret" "jwt_secret" {
-  name         = "jwt-secret"
-  value        = var.jwt_secret
-  key_vault_id = azurerm_key_vault.this.id
-
-  content_type    = "jwt-secret"
-  expiration_date = var.secrets_expiration_date
-}
-
-###############################################
-# PRIVATE ENDPOINT
-###############################################
-
 resource "azurerm_private_endpoint" "this" {
   name                = "${var.project}-${var.environment}-kv-pe"
   location            = var.location
@@ -69,10 +30,6 @@ resource "azurerm_private_endpoint" "this" {
   }
 }
 
-###############################################
-# DIAGNOSTIC SETTINGS (LOGGING)
-###############################################
-
 resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
   name                       = "kv-logs-${var.environment}"
   target_resource_id         = azurerm_key_vault.this.id
@@ -82,28 +39,31 @@ resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
     category = "AuditEvent"
   }
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
-    enabled  = true
   }
 }
 
-###############################################
-# OUTPUTS
-###############################################
-
-output "key_vault_id" {
-  value = azurerm_key_vault.this.id
+resource "azurerm_key_vault_secret" "ghcr_token" {
+  name         = "ghcr-token"
+  value        = var.ghcr_token
+  key_vault_id = azurerm_key_vault.this.id
+  content_type = "token"
+  expiration_date = var.secrets_expiration_date
 }
 
-output "ghcr_token_secret_uri" {
-  value = azurerm_key_vault_secret.ghcr_token.id
+resource "azurerm_key_vault_secret" "api_key" {
+  name         = "api-key"
+  value        = var.api_key
+  key_vault_id = azurerm_key_vault.this.id
+  content_type = "api-key"
+  expiration_date = var.secrets_expiration_date
 }
 
-output "api_key_secret_uri" {
-  value = azurerm_key_vault_secret.api_key.id
-}
-
-output "jwt_secret_secret_uri" {
-  value = azurerm_key_vault_secret.jwt_secret.id
+resource "azurerm_key_vault_secret" "jwt_secret" {
+  name         = "jwt-secret"
+  value        = var.jwt_secret
+  key_vault_id = azurerm_key_vault.this.id
+  content_type = "jwt-secret"
+  expiration_date = var.secrets_expiration_date
 }

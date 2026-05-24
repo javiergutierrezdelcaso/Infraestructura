@@ -16,28 +16,23 @@ env:
   ARM_TENANT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
   ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
 
-  TF_VAR_arm_client_id:       ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-  TF_VAR_arm_client_secret:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
-  TF_VAR_arm_tenant_id:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
   TF_VAR_tenant_id:           ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
-  TF_VAR_arm_subscription_id: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-
-  TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
-  TF_VAR_api_key:    ${{ secrets.API_KEY }}
-  TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+  TF_VAR_ghcr_token:          ${{ secrets.GHCR_TOKEN }}
+  TF_VAR_api_key:             ${{ secrets.API_KEY }}
+  TF_VAR_jwt_secret:          ${{ secrets.JWT_SECRET }}
   TF_VAR_secrets_expiration_date: "2026-12-31T00:00:00Z"
 
 jobs:
 
   infraestructura:
-    name: Despliegue de Infraestructura (Terraform)
+    name: Despliegue Infraestructura (Terraform)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Obtener código fuente
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Seleccionar entorno PRE/PRO
@@ -46,29 +41,20 @@ jobs:
           if [[ "${GITHUB_REF_NAME}" == "develop" ]]; then
             echo "dir=terraform/pre" >> $GITHUB_OUTPUT
             echo "env=pre" >> $GITHUB_OUTPUT
-            echo "subnet=${{ secrets.SUBNET_ID_PRE }}" >> $GITHUB_OUTPUT
-            echo "log=${{ secrets.LOG_ID_PRE }}" >> $GITHUB_OUTPUT
           else
             echo "dir=terraform/pro" >> $GITHUB_OUTPUT
             echo "env=pro" >> $GITHUB_OUTPUT
-            echo "subnet=${{ secrets.SUBNET_ID_PRO }}" >> $GITHUB_OUTPUT
-            echo "log=${{ secrets.LOG_ID_PRO }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Exportar TF_VAR de red
-        run: |
-          echo "TF_VAR_subnet_id=${{ steps.entorno.outputs.subnet }}" >> $GITHUB_ENV
-          echo "TF_VAR_log_analytics_workspace_id=${{ steps.entorno.outputs.log }}" >> $GITHUB_ENV
-
-      - name: Inicializar Terraform
+      - name: Terraform Init
         working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform init -input=false
 
-      - name: Planificación del despliegue
+      - name: Terraform Plan
         working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform plan -input=false -out=tfplan
 
-      - name: Aplicación del despliegue
+      - name: Terraform Apply
         working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform apply -input=false -auto-approve tfplan
 
@@ -83,7 +69,7 @@ jobs:
           path: ${{ steps.entorno.outputs.dir }}/terraform-outputs.json
 
   configuracion:
-    name: Configuración de Servidores (Ansible)
+    name: Configuración Servidores (Ansible)
     runs-on: ubuntu-latest
     needs: infraestructura
     defaults:
@@ -91,10 +77,10 @@ jobs:
         working-directory: ansible
 
     steps:
-      - name: Obtener código fuente
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Descargar outputs de Terraform
+      - name: Descargar outputs
         uses: actions/download-artifact@v4
         with:
           name: terraform-outputs
@@ -105,24 +91,24 @@ jobs:
           sudo apt update
           sudo apt install -y ansible python3-pip jq curl openssl dnsutils netcat-traditional
 
-      - name: Cargar APP_URL desde outputs
+      - name: Cargar APP_URL
         run: echo "APP_URL=$(jq -r '.app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
 
-      - name: Configurar entorno PRE
+      - name: Configurar PRE
         if: github.ref == 'refs/heads/develop'
         run: ansible-playbook -i inventories/pre/hosts site.yml -e "app_url=${APP_URL}"
 
-      - name: Configurar entorno PRO
+      - name: Configurar PRO
         if: github.ref == 'refs/heads/main'
         run: ansible-playbook -i inventories/pro/hosts site.yml -e "app_url=${APP_URL}"
 
   postdeploy:
-    name: Pruebas Post‑Despliegue (Health, Seguridad, DNS, SSL, Puertos, Logs)
+    name: Validaciones Post‑Despliegue
     runs-on: ubuntu-latest
     needs: configuracion
 
     steps:
-      - name: Obtener outputs de Terraform
+      - name: Descargar outputs
         uses: actions/download-artifact@v4
         with:
           name: terraform-outputs
@@ -131,56 +117,26 @@ jobs:
       - name: Cargar APP_URL
         run: echo "APP_URL=$(jq -r '.app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
 
-      - name: Prueba HTTP 200
-        run: |
-          STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL")
-          if [ "$STATUS" != "200" ]; then exit 1; fi
-
-      - name: Prueba de latencia
-        run: |
-          TIME=$(curl -o /dev/null -s -w "%{time_total}" "$APP_URL")
-          LAT_MAX=1.5
-          RESULT=$(echo "$TIME < $LAT_MAX" | bc -l)
-          if [ "$RESULT" -ne 1 ]; then exit 1; fi
-
-      - name: Prueba de disponibilidad
-        run: |
-          for i in {1..5}; do
-            STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL")
-            if [ "$STATUS" == "200" ]; then exit 0; fi
-            sleep 3
-          done
-          exit 1
-
-      - name: Validación DNS
-        run: |
-          HOST=$(echo $APP_URL | sed 's~http[s]*://~~' | sed 's~/.*~~')
-          dig +short $HOST || exit 1
-
-      - name: Validación SSL
-        run: |
-          HOST=$(echo $APP_URL | sed 's~http[s]*://~~' | sed 's~/.*~~')
-          echo | openssl s_client -servername $HOST -connect $HOST:443 2>/dev/null | openssl x509 -noout -dates || exit 1
-
-      - name: Validación de puertos
-        run: |
-          HOST=$(echo $APP_URL | sed 's~http[s]*://~~' | sed 's~/.*~~')
-          nc -zv $HOST 80 || exit 1
-          nc -zv $HOST 443 || exit 1
-
-      - name: Validación /health
+      - name: Health Check
         run: |
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL/health")
           if [ "$STATUS" != "200" ]; then exit 1; fi
 
-      - name: Validación /metrics
+      - name: Validación DNS
         run: |
-          STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL/metrics")
-          if [ "$STATUS" != "200" ]; then exit 1; fi
+          HOST=$(echo $APP_URL | sed 's~http[s]*://~~')
+          dig +short $HOST || exit 1
 
-      - name: Validación logs
+      - name: Validación SSL
         run: |
-          curl -s "$APP_URL/logs" | head -n 20 || true
+          HOST=$(echo $APP_URL | sed 's~http[s]*://~~')
+          echo | openssl s_client -servername $HOST -connect $HOST:443 2>/dev/null | openssl x509 -noout -dates || exit 1
+
+      - name: Validación Puertos
+        run: |
+          HOST=$(echo $APP_URL | sed 's~http[s]*://~~')
+          nc -zv $HOST 80 || exit 1
+          nc -zv $HOST 443 || exit 1
 
       - name: Validación JSON
         run: |

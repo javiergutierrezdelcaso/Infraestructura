@@ -46,4 +46,34 @@ module "app_service_pro" {
   api_key_secret_uri    = module.keyvault_pro.api_key_secret_uri
   jwt_secret_secret_uri = module.keyvault_pro.jwt_secret_secret_uri
 }
+module "network_pro" {
+  source              = "../../modules/network"
+  project             = var.project
+  environment         = "pro"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+module "log_analytics_pro" {
+  source              = "../../modules/log_analytics"
+  project             = var.project
+  environment         = "pro"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+module "keyvault_pro" {
+  source                        = "../../modules/keyvault"
+  project                       = var.project
+  environment                   = "pro"
+  location                      = var.location
+  resource_group_name           = var.resource_group_name
+  tenant_id                     = var.tenant_id
+  ghcr_token                    = var.ghcr_token
+  api_key                       = var.api_key
+  jwt_secret                    = var.jwt_secret
+  subnet_id                     = module.network_pro.subnet_id
+  log_analytics_workspace_id    = module.log_analytics_pro.workspace_id
+  secrets_expiration_date       = var.secrets_expiration_date
+}
 
