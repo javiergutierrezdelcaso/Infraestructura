@@ -8,7 +8,6 @@ on:
 permissions:
   contents: read
 
-
 env:
   ARM_CLIENT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
   ARM_CLIENT_SECRET:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
@@ -20,19 +19,16 @@ env:
   TF_VAR_api_key:             ${{ secrets.API_KEY }}
   TF_VAR_jwt_secret:          ${{ secrets.JWT_SECRET }}
   TF_VAR_secrets_expiration_date: "2026-12-31T00:00:00Z"
+  TF_VAR_project: "ecoanalyzer"
 
 jobs:
 
   ############################################
   # 1. VALIDACIÓN TERRAFORM (FMT, VALIDATE, PLAN PRE/PRO)
   ############################################
-  
   terraform-validation:
     name: Validación de Infraestructura (Terraform)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform
 
     steps:
       - name: Checkout
@@ -43,28 +39,53 @@ jobs:
         with:
           terraform_version: 1.9.5
 
+      ############################################
+      # VALIDACIÓN GLOBAL (FMT)
+      ############################################
       - name: terraform fmt
+        working-directory: terraform
         run: terraform fmt -recursive -check
 
-      - name: terraform init
+      ############################################
+      # VALIDACIÓN PRE
+      ############################################
+      - name: Init PRE
+        working-directory: terraform/pre
         run: terraform init
 
-      - name: terraform validate
+      - name: Validate PRE
+        working-directory: terraform/pre
         run: terraform validate
 
       - name: Plan PRE
-        run: terraform plan -var="environment=pre" -out=tfplan-pre
+        working-directory: terraform/pre
+        run: terraform plan -out=tfplan-pre
+
+      ############################################
+      # VALIDACIÓN PRO
+      ############################################
+      - name: Init PRO
+        working-directory: terraform/pro
+        run: terraform init
+
+      - name: Validate PRO
+        working-directory: terraform/pro
+        run: terraform validate
 
       - name: Plan PRO
-        run: terraform plan -var="environment=pro" -out=tfplan-pro
+        working-directory: terraform/pro
+        run: terraform plan -out=tfplan-pro
 
+      ############################################
+      # PUBLICAR PLANES
+      ############################################
       - name: Publicar planes
         uses: actions/upload-artifact@v4
         with:
           name: terraform-plans
           path: |
-            terraform/tfplan-pre
-            terraform/tfplan-pro
+            terraform/pre/tfplan-pre
+            terraform/pro/tfplan-pro
 
   ############################################
   # 2. SEGURIDAD IAC (TFSEC, CHECKOV, TERRASCAN, GITLEAKS)
@@ -105,11 +126,8 @@ jobs:
           chmod +x terrascan
           sudo mv terrascan /usr/local/bin/terrascan
 
-
       - name: Terrascan
         run: terrascan scan -d ./ -i terraform --non-recursive
-
-
 
       # GITLEAKS
       - name: Instalar Gitleaks
