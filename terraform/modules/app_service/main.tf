@@ -12,11 +12,11 @@ resource "azurerm_linux_web_app" "this" {
   resource_group_name = var.resource_group_name
   service_plan_id     = azurerm_service_plan.this.id
 
-  https_only = true   # CKV_AZURE_14
+  https_only = true
 
   site_config {
-    ftps_state        = "Disabled"   # CKV_AZURE_78
-    health_check_path = "/health"    # CKV_AZURE_213
+    ftps_state        = "Disabled"
+    health_check_path = "/health"
   }
 }
 
