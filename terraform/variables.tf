@@ -7,7 +7,7 @@ variable "project" {
   description = "Nombre del proyecto."
   default     = "ecoanalyzer"
 }
-Variable "environment" {
+variable "environment" {
   type        = string
   description = "Entorno de despliegue (pre o pro)."
 }
