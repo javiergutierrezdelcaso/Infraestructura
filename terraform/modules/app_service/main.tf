@@ -15,8 +15,11 @@ resource "azurerm_linux_web_app" "this" {
   https_only = true
 
   site_config {
-    always_on = true
+    always_on  = true
     ftps_state = "Disabled"
-    health_check_path = "/health"
+
+    # Health check (AzureRM 4.x exige ambos)
+    health_check_path                 = "/health"
+    health_check_eviction_time_in_min = 2
   }
 }
