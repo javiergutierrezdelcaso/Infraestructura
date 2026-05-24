@@ -12,12 +12,7 @@ resource "azurerm_key_vault" "this" {
     default_action = "Deny"
     bypass         = "AzureServices"
 
-    dynamic "ip_rule" {
-      for_each = var.allowed_ip_ranges
-      content {
-        value = ip_rule.value
-      }
-    }
+    ip_rules = var.allowed_ip_ranges
   }
 }
 
