@@ -63,33 +63,14 @@ jobs:
       ############################################
       # PRE – LIMPIEZA DE LOCK HUÉRFANO
       ############################################
-      - name: Eliminar lock huérfano PRE
+      - name: Limpiar estado local PRE
+        working-directory: terraform/pre
         run: |
-          FILE="pre.tfstate"
-          LOCKFILE="${FILE}.lockinfo"
+          rm -rf .terraform
+          rm -f .terraform.lock.hcl
+          rm -f terraform.tfstate
+          rm -f terraform.tfstate.backup
 
-          echo "Comprobando lock PRE: $LOCKFILE"
-
-          EXISTS=$(az storage blob exists \
-            --account-name $AZURE_STORAGE_ACCOUNT \
-            --container-name $AZURE_STORAGE_CONTAINER \
-            --name $LOCKFILE \
-            --auth-mode key \
-            --account-key "$AZURE_STORAGE_KEY" \
-            --query exists -o tsv)
-
-          if [ "$EXISTS" = "true" ]; then
-            echo "Lock PRE encontrado. Eliminando..."
-            az storage blob delete \
-              --account-name $AZURE_STORAGE_ACCOUNT \
-              --container-name $AZURE_STORAGE_CONTAINER \
-              --name $LOCKFILE \
-              --auth-mode key \
-              --account-key "$AZURE_STORAGE_KEY"
-            echo "Lock PRE eliminado."
-          else
-            echo "No hay lock PRE."
-          fi
 
 
 
@@ -111,33 +92,15 @@ jobs:
       ############################################
       # PRO – LIMPIEZA DE LOCK HUÉRFANO
       ############################################
-      - name: Eliminar lock huérfano PRO
+      - name: Eliminar lock local PRO
+        working-directory: terraform/pro
         run: |
-          FILE="pro.tfstate"
-          LOCKFILE="${FILE}.lockinfo"
+          echo "Eliminando lock local PRO..."
+          rm -f .terraform.tfstate.lock.info || true
+          rm -f .terraform/terraform.tfstate.lock.info || true
+          rm -f .terraform.lock.hcl || true
+          rm -rf .terraform || true
 
-          echo "Comprobando lock PRO: $LOCKFILE"
-
-          EXISTS=$(az storage blob exists \
-            --account-name $AZURE_STORAGE_ACCOUNT \
-            --container-name $AZURE_STORAGE_CONTAINER \
-            --name $LOCKFILE \
-            --auth-mode key \
-            --account-key "$AZURE_STORAGE_KEY" \
-            --query exists -o tsv)
-
-          if [ "$EXISTS" = "true" ]; then
-            echo "Lock PRO encontrado. Eliminando..."
-            az storage blob delete \
-              --account-name $AZURE_STORAGE_ACCOUNT \
-              --container-name $AZURE_STORAGE_CONTAINER \
-              --name $LOCKFILE \
-              --auth-mode key \
-              --account-key "$AZURE_STORAGE_KEY"
-            echo "Lock PRO eliminado."
-          else
-            echo "No hay lock PRO."
-          fi
 
 
       ############################################
