@@ -103,8 +103,8 @@ jobs:
       # TERRASCAN
       - name: Instalar Terrascan
         run: |
-          run: |
-          curl -L https://github.com/tenable/terrascan/releases/latest/download/terrascan -o terrascan
+          curl -L https://github.com/tenable/terrascan/releases/latest/download/terrascan_Linux_x86_64.tar.gz -o terrascan.tar.gz
+          tar -xzf terrascan.tar.gz
           chmod +x terrascan
           sudo mv terrascan /usr/local/bin/terrascan
 
