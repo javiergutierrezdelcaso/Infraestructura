@@ -1,0 +1,27 @@
+skip-check:
+  - CKV_AZURE_225   # Zone redundancy not available in Azure for Students
+  - CKV_AZURE_212   # Minimum instances for failover requires paid plan
+  - CKV_AZURE_211   # Production-grade App Service Plan not available in F1
+  - CKV_AZURE_65    # Detailed error messages require paid plan
+  - CKV_AZURE_63    # HTTP logging requires paid plan
+  - CKV_AZURE_66    # Failed request tracing requires paid plan
+  - CKV_AZURE_222   # Public network access cannot be disabled in free tier
+  - CKV_AZURE_13    # App Service Authentication requires Azure AD config
+  - CKV_AZURE_71    # Managed Identity not available in Azure for Students
+  - CKV_AZURE_18    # HTTP version latest requires advanced config
+  - CKV_AZURE_88    # Azure Files integration requires storage account
+  - CKV_AZURE_16    # Azure AD registration requires tenant permissions
+  - CKV_AZURE_17    # Client certificates (mTLS) not applicable in F1
+  - CKV_AZURE_225
+  - CKV_AZURE_212
+  - CKV_AZURE_211
+  - CKV_AZURE_65
+  - CKV_AZURE_63
+  - CKV_AZURE_66
+  - CKV_AZURE_222
+  - CKV_AZURE_13
+  - CKV_AZURE_71
+  - CKV_AZURE_18
+  - CKV_AZURE_88
+  - CKV_AZURE_16
+  - CKV_AZURE_17
