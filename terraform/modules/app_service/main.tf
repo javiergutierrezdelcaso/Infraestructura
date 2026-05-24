@@ -21,6 +21,33 @@ resource "azurerm_user_assigned_identity" "identity" {
 }
 
 ############################################
+# APP SETTINGS (SE CONSTRUYEN AQUÍ)
+############################################
+
+locals {
+  base_settings = {
+    APP_ENV = var.app_env
+  }
+
+  keyvault_settings = {
+    GHCR_TOKEN = var.ghcr_token_secret_uri != null ?
+      "@Microsoft.KeyVault(SecretUri=${var.ghcr_token_secret_uri})" : null
+
+    API_KEY = var.api_key_secret_uri != null ?
+      "@Microsoft.KeyVault(SecretUri=${var.api_key_secret_uri})" : null
+
+    JWT_SECRET = var.jwt_secret_secret_uri != null ?
+      "@Microsoft.KeyVault(SecretUri=${var.jwt_secret_secret_uri})" : null
+  }
+
+  # Limpia valores null (Terraform no los acepta en app_settings)
+  merged_settings = {
+    for k, v in merge(local.base_settings, local.keyvault_settings) :
+    k => v if v != null
+  }
+}
+
+############################################
 # LINUX WEB APP
 ############################################
 
@@ -41,22 +68,19 @@ resource "azurerm_linux_web_app" "app" {
     application_stack {
       dotnet_version = "8.0"
     }
+
     ftps_state                        = "Disabled"
     health_check_path                 = "/"
     health_check_eviction_time_in_min = 10
   }
 
-  app_settings = {
-    APP_ENV = var.app_env
-
-    GHCR_TOKEN = var.ghcr_token_secret_uri != null ?
-      "@Microsoft.KeyVault(SecretUri=${var.ghcr_token_secret_uri})" : null
-
-    API_KEY = var.api_key_secret_uri != null ?
-      "@Microsoft.KeyVault(SecretUri=${var.api_key_secret_uri})" : null
-
-    JWT_SECRET = var.jwt_secret_secret_uri != null ?
-      "@Microsoft.KeyVault(SecretUri=${var.jwt_secret_secret_uri})" : null
-  }
+  app_settings = local.merged_settings
 }
 
+############################################
+# OUTPUTS
+############################################
+
+output "identity_principal_id" {
+  value = azurerm_user_assigned_identity.identity.principal_id
+}
