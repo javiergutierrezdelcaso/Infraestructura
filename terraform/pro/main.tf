@@ -51,7 +51,6 @@ module "keyvault_pro" {
   log_analytics_workspace_id = module.log_analytics_pro.workspace_id
 
   secrets_expiration_date = var.secrets_expiration_date
-  allowed_ip_ranges       = []
 }
 
 ############################################
