@@ -1,24 +1,27 @@
-variable "app_name" {
-  type        = string
-  description = "Nombre del App Service"
+variable "project" {
+  type = string
+}
+
+variable "environment" {
+  type = string
 }
 
 variable "location" {
-  type        = string
-  description = "Región de Azure"
+  type = string
 }
 
-variable "resource_group" {
-  type        = string
-  description = "Nombre del Resource Group donde se desplegará el App Service"
+variable "resource_group_name" {
+  type = string
 }
 
-variable "app_env" {
-  type        = string
-  description = "Entorno de la aplicación (pre, pro, dev)"
+variable "ghcr_token_secret_uri" {
+  type = string
 }
 
-variable "sku_name" {
-  type        = string
-  description = "SKU del App Service Plan"
+variable "api_key_secret_uri" {
+  type = string
+}
+
+variable "jwt_secret_secret_uri" {
+  type = string
 }

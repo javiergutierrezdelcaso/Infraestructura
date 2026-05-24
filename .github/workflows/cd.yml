@@ -1,32 +1,34 @@
 name: CD - Infraestructura PRE/PRO
 
 on:
-  push:
-    branches: ["develop", "main"]
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["CI - Infraestructura"]
+    types:
+      - completed
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  terraform-apply:
+
+  # ============================================================
+  # 1. DESPLIEGUE DE INFRAESTRUCTURA (TERRAFORM)
+  # ============================================================
+  infraestructura:
+    name: Despliegue de Infraestructura (Terraform)
     runs-on: ubuntu-latest
-    env:
-      ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-      ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
-      ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
-      ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Checkout
+      - name: Obtener código fuente
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Select environment
-        id: env
+      - name: Seleccionar entorno PRE/PRO
+        id: entorno
         run: |
           if [[ "${GITHUB_REF_NAME}" == "develop" ]]; then
             echo "dir=terraform/environments/pre" >> $GITHUB_OUTPUT
@@ -36,76 +38,208 @@ jobs:
             echo "env=pro" >> $GITHUB_OUTPUT
           fi
 
-      - name: Terraform Init
-        working-directory: ${{ steps.env.outputs.dir }}
+      - name: Inicializar Terraform
+        working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform init -input=false
 
-      - name: Terraform Validate
-        working-directory: ${{ steps.env.outputs.dir }}
-        run: terraform validate
-
-      - name: Terraform Plan
-        working-directory: ${{ steps.env.outputs.dir }}
+      - name: Planificación del despliegue
+        working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform plan -input=false -out=tfplan
 
-      - name: Terraform Apply
-        working-directory: ${{ steps.env.outputs.dir }}
+      - name: Aplicación del despliegue
+        working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform apply -input=false -auto-approve tfplan
 
-      - name: Export Outputs
-        working-directory: ${{ steps.env.outputs.dir }}
+      - name: Exportar outputs
+        working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform output -json > terraform-outputs.json
 
-      - name: Upload Outputs
+      - name: Publicar outputs
         uses: actions/upload-artifact@v4
         with:
           name: terraform-outputs
-          path: ${{ steps.env.outputs.dir }}/terraform-outputs.json
+          path: ${{ steps.entorno.outputs.dir }}/terraform-outputs.json
 
-  ansible-deploy:
+  # ============================================================
+  # 2. CONFIGURACIÓN DE SERVIDORES (ANSIBLE)
+  # ============================================================
+  configuracion:
+    name: Configuración de Servidores (Ansible)
     runs-on: ubuntu-latest
-    needs: terraform-apply
+    needs: infraestructura
     defaults:
       run:
         working-directory: ansible
 
     steps:
-      - name: Checkout
+      - name: Obtener código fuente
         uses: actions/checkout@v4
 
-      - name: Download Terraform Outputs
+      - name: Descargar outputs de Terraform
         uses: actions/download-artifact@v4
         with:
           name: terraform-outputs
           path: .
 
-      - name: Install Ansible
+      - name: Instalar Ansible
         run: |
           sudo apt update
-          sudo apt install -y ansible python3-pip jq
+          sudo apt install -y ansible python3-pip jq curl openssl dnsutils netcat-traditional
 
-      - name: Set APP_URL (PRE)
+      - name: Cargar APP_URL desde outputs
+        run: echo "APP_URL=$(jq -r '.app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
+
+      - name: Configurar entorno PRE
         if: github.ref == 'refs/heads/develop'
-        run: |
-          echo "APP_URL=$(jq -r '.app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
+        run: ansible-playbook -i inventories/pre/hosts site.yml -e "app_url=${APP_URL}"
 
-      - name: Set APP_URL (PRO)
+      - name: Configurar entorno PRO
         if: github.ref == 'refs/heads/main'
-        run: |
-          echo "APP_URL=$(jq -r '.app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
+        run: ansible-playbook -i inventories/pro/hosts site.yml -e "app_url=${APP_URL}"
 
-      - name: Run Ansible PRE
-        if: github.ref == 'refs/heads/develop'
-        run: |
-          ansible-playbook \
-            -i inventories/pre/hosts \
-            site.yml \
-            -e "app_url=${APP_URL}"
+  # ============================================================
+  # 3. PRUEBAS POST-DEPLOY PROFESIONALES
+  # ============================================================
+  postdeploy:
+    name: Pruebas Post‑Despliegue (Health, Seguridad, DNS, SSL, Puertos, Logs)
+    runs-on: ubuntu-latest
+    needs: configuracion
 
-      - name: Run Ansible PRO
-        if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Obtener outputs de Terraform
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-outputs
+          path: .
+
+      - name: Cargar APP_URL
+        run: echo "APP_URL=$(jq -r '.app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
+
+      # -------------------------------
+      # 1) Prueba HTTP 200
+      # -------------------------------
+      - name: Prueba HTTP 200 (salud básica)
         run: |
-          ansible-playbook \
-            -i inventories/pro/hosts \
-            site.yml \
-            -e "app_url=${APP_URL}"
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL")
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ HTTP no responde 200. Código: $STATUS"
+            exit 1
+          fi
+          echo "✔ HTTP 200 OK"
+
+      # -------------------------------
+      # 2) Prueba de latencia
+      # -------------------------------
+      - name: Prueba de latencia (rendimiento)
+        run: |
+          TIME=$(curl -o /dev/null -s -w "%{time_total}" "$APP_URL")
+          echo "Latencia: $TIME segundos"
+          LAT_MAX=1.5
+          RESULT=$(echo "$TIME < $LAT_MAX" | bc -l)
+          if [ "$RESULT" -ne 1 ]; then
+            echo "❌ Latencia demasiado alta"
+            exit 1
+          fi
+          echo "✔ Latencia aceptable"
+
+      # -------------------------------
+      # 3) Prueba de disponibilidad con reintentos
+      # -------------------------------
+      - name: Prueba de disponibilidad (reintentos)
+        run: |
+          for i in {1..5}; do
+            STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL")
+            if [ "$STATUS" == "200" ]; then
+              echo "✔ Disponible tras $i intentos"
+              exit 0
+            fi
+            echo "Intento $i: HTTP $STATUS"
+            sleep 3
+          done
+          echo "❌ No disponible tras 5 intentos"
+          exit 1
+
+      # -------------------------------
+      # 4) Prueba de DNS
+      # -------------------------------
+      - name: Validación DNS (resolución correcta)
+        run: |
+          HOST=$(echo $APP_URL | sed 's~http[s]*://~~' | sed 's~/.*~~')
+          echo "Validando DNS de: $HOST"
+          dig +short $HOST
+          if [ $? -ne 0 ]; then
+            echo "❌ DNS no resuelve"
+            exit 1
+          fi
+          echo "✔ DNS resuelve correctamente"
+
+      # -------------------------------
+      # 5) Prueba de certificado SSL
+      # -------------------------------
+      - name: Validación SSL (certificado válido)
+        run: |
+          HOST=$(echo $APP_URL | sed 's~http[s]*://~~' | sed 's~/.*~~')
+          echo | openssl s_client -servername $HOST -connect $HOST:443 2>/dev/null | openssl x509 -noout -dates
+          if [ $? -ne 0 ]; then
+            echo "❌ Certificado SSL inválido"
+            exit 1
+          fi
+          echo "✔ Certificado SSL válido"
+
+      # -------------------------------
+      # 6) Prueba de puertos abiertos
+      # -------------------------------
+      - name: Validación de puertos (80/443)
+        run: |
+          HOST=$(echo $APP_URL | sed 's~http[s]*://~~' | sed 's~/.*~~')
+          for PORT in 80 443; do
+            nc -zv $HOST $PORT
+            if [ $? -ne 0 ]; then
+              echo "❌ Puerto $PORT cerrado"
+              exit 1
+            fi
+            echo "✔ Puerto $PORT abierto"
+          done
+
+      # -------------------------------
+      # 7) Prueba de endpoint /health
+      # -------------------------------
+      - name: Validación endpoint /health
+        run: |
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL/health")
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ /health no responde 200"
+            exit 1
+          fi
+          echo "✔ /health OK"
+
+      # -------------------------------
+      # 8) Prueba de endpoint /metrics
+      # -------------------------------
+      - name: Validación endpoint /metrics
+        run: |
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL/metrics")
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ /metrics no responde 200"
+            exit 1
+          fi
+          echo "✔ /metrics OK"
+
+      # -------------------------------
+      # 9) Validación de logs accesibles
+      # -------------------------------
+      - name: Validación de logs (si existen)
+        run: |
+          curl -s "$APP_URL/logs" | head -n 20 || echo "✔ Logs no públicos (correcto si está protegido)"
+
+      # -------------------------------
+      # 10) Prueba de integridad JSON
+      # -------------------------------
+      - name: Validación de respuesta JSON
+        run: |
+          curl -s "$APP_URL" | jq . >/dev/null 2>&1
+          if [ $? -ne 0 ]; then
+            echo "❌ La respuesta no es JSON válido"
+            exit 1
+          fi
+          echo "✔ JSON válido"

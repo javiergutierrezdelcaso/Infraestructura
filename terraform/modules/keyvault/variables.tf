@@ -1,47 +1,51 @@
 variable "project" {
-  type    = string
-  default = "ecoanalyzer"
+  type = string
 }
+
 variable "environment" {
   type = string
 }
 
 variable "location" {
-  type    = string
-  default = "westeurope"
-}
-
-variable "arm_client_id" {
   type = string
 }
 
-variable "arm_client_secret" {
-  type      = string
-  sensitive = true
-}
-
-variable "arm_tenant_id" {
+variable "resource_group_name" {
   type = string
 }
 
-variable "arm_subscription_id" {
+variable "tenant_id" {
+  type = string
+}
+
+variable "allowed_ip_ranges" {
+  type    = list(string)
+  default = []
+}
+
+variable "secrets_expiration_date" {
   type = string
 }
 
 variable "ghcr_token" {
   type      = string
   sensitive = true
-  default   = ""
 }
 
 variable "api_key" {
   type      = string
   sensitive = true
-  default   = ""
 }
 
 variable "jwt_secret" {
   type      = string
   sensitive = true
-  default   = ""
+}
+
+variable "subnet_id" {
+  type = string
+}
+
+variable "log_analytics_workspace_id" {
+  type = string
 }

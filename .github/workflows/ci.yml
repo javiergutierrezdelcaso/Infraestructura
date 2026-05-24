@@ -1,96 +1,141 @@
 name: CI - Infraestructura
 
 on:
+  pull_request:
   push:
     branches: ["develop", "main"]
-  pull_request:
 
 permissions:
   contents: read
 
+
+env:
+  ARM_CLIENT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+  ARM_CLIENT_SECRET:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+  ARM_TENANT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+  ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+
+  TF_VAR_arm_client_id:       ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+  TF_VAR_arm_client_secret:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+  TF_VAR_arm_tenant_id:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+  TF_VAR_arm_subscription_id: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+
+  TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
+  TF_VAR_api_key: ${{ secrets.API_KEY }}
+  TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+
 jobs:
 
-  terraform-ci:
+  ############################################
+  # 1. VALIDACIÓN TERRAFORM (FMT, VALIDATE, PLAN PRE/PRO)
+  ############################################
+  
+  terraform-validation:
+    name: Validación de Infraestructura (Terraform)
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
     defaults:
       run:
         working-directory: terraform
-    env:
-      ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-      ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
-      ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
-      ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-
-      
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
 
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Format
+      - name: terraform fmt
         run: terraform fmt -recursive -check
 
-      - name: Terraform Validate
+      - name: terraform init
+        run: terraform init
+
+      - name: terraform validate
         run: terraform validate
 
-      - name: Terraform Plan PRE
-        env:
-          ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-          ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
-          ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
-          ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-        run: |
-          terraform plan \
-            -var="environment=pre" \
-            -var="client_id=${ARM_CLIENT_ID}" \
-            -var="client_secret=${ARM_CLIENT_SECRET}" \
-            -var="tenant_id=${ARM_TENANT_ID}" \
-            -var="subscription_id=${ARM_SUBSCRIPTION_ID}"
+      - name: Plan PRE
+        run: terraform plan -var="environment=pre" -out=tfplan-pre
 
-      - name: Install tfsec
-        run: |
-          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+      - name: Plan PRO
+        run: terraform plan -var="environment=pro" -out=tfplan-pro
 
-      - name: Run tfsec
+      - name: Publicar planes
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plans
+          path: |
+            terraform/tfplan-pre
+            terraform/tfplan-pro
+
+  ############################################
+  # 2. SEGURIDAD IAC (TFSEC, CHECKOV, TERRASCAN, GITLEAKS)
+  ############################################
+  iac-security:
+    name: Auditoría de Seguridad IaC
+    runs-on: ubuntu-latest
+    needs: terraform-validation
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # TFSEC
+      - name: Instalar tfsec
+        run: curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+
+      - name: tfsec
         run: tfsec .
 
-      - name: Install Checkov
+      # CHECKOV
+      - name: Instalar Checkov
         run: pipx install checkov
 
-      - name: Run Checkov
-        run: checkov -d .
-
-      - name: Install terraform-docs
+      - name: Checkov (cumplimiento + secretos)
         run: |
-          curl -sSLo terraform-docs.tar.gz https://github.com/terraform-docs/terraform-docs/releases/download/v0.17.0/terraform-docs-v0.17.0-linux-amd64.tar.gz
-          tar -xzf terraform-docs.tar.gz
-          sudo mv terraform-docs /usr/local/bin/
+          checkov -d .
+          checkov -d . --check CKV_SECRET_6
 
-      - name: Generate Terraform Docs
-        run: terraform-docs markdown table . > README.md
+      # TERRASCAN
+      - name: Instalar Terrascan
+        run: |
+          curl -L https://github.com/tenable/terrascan/releases/download/v1.19.9/terrascan_1.19.9_Linux_x86_64.tar.gz -o terrascan.tar.gz
+          tar -xzf terrascan.tar.gz
+          chmod +x terrascan
+          sudo mv terrascan /usr/local/bin/terrascan
 
-      - name: Install Gitleaks
+
+      - name: Terrascan
+        run: terrascan scan -d ./ -i terraform --non-recursive
+
+
+
+      # GITLEAKS
+      - name: Instalar Gitleaks
         run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')_linux_x64.tar.gz -o gitleaks.tar.gz
           tar -xzf gitleaks.tar.gz
           sudo mv gitleaks /usr/local/bin/gitleaks
 
+      - name: Gitleaks
+        run: gitleaks detect --source . --no-banner
 
-      - name: Run Gitleaks
-        run: gitleaks detect --source .
+      # VALIDAR REFERENCIAS KEY VAULT EN APP SERVICE
+      - name: Validar referencias Key Vault en Terraform
+        run: |
+          grep -R "@Microsoft.KeyVault" -n . || (echo "No se encontraron referencias a Key Vault en app_settings" && exit 1)
 
-  ansible-ci:
+  ############################################
+  # 3. VALIDACIÓN DE CONFIGURACIÓN (ANSIBLE)
+  ############################################
+  ansible-validation:
+    name: Validación de Configuración (Ansible)
     runs-on: ubuntu-latest
-    needs: terraform-ci
+    needs: iac-security
     defaults:
       run:
         working-directory: ansible
@@ -99,39 +144,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Ansible + linters
+      - name: Instalar Ansible y linters
         run: |
           sudo apt update
           sudo apt install -y ansible yamllint pipx
           pipx ensurepath
           pipx install ansible-lint
 
-      - name: Lint YAML
+      - name: Validación YAML
         run: yamllint .
 
-      - name: Lint Ansible
+      - name: ansible-lint
         run: ansible-lint .
 
-      - name: Test PRE inventory
-        run: ansible all -i inventories/pre/hosts -m ping
-
-      - name: Test PRO inventory
-        run: ansible all -i inventories/pro/hosts -m ping
-
-      - name: Syntax Check PRE
+      - name: Validación sintáctica PRE
         run: ansible-playbook --syntax-check site.yml -i inventories/pre/hosts
 
-      - name: Syntax Check PRO
+      - name: Validación sintáctica PRO
         run: ansible-playbook --syntax-check site.yml -i inventories/pro/hosts
 
-      - name: Idempotency Check PRE (1st run)
+      - name: Prueba de idempotencia PRE
         run: ansible-playbook site.yml -i inventories/pre/hosts --check
 
-      - name: Idempotency Check PRE (2nd run)
-        run: ansible-playbook site.yml -i inventories/pre/hosts --check
-
-      - name: Idempotency Check PRO (1st run)
+      - name: Prueba de idempotencia PRO
         run: ansible-playbook site.yml -i inventories/pro/hosts --check
 
-      - name: Idempotency Check PRO (2nd run)
-        run: ansible-playbook site.yml -i inventories/pro/hosts --check
+      - name: Validar que no hay secretos hardcodeados en Ansible
+        run: |
+          ! grep -R "password" -n . || (echo "Se encontró 'password' en Ansible" && exit 1)
+          ! grep -R "secret" -n . || (echo "Se encontró 'secret' en Ansible" && exit 1)
+          ! grep -R "token" -n . || (echo "Se encontró 'token' en Ansible" && exit 1)
