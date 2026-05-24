@@ -13,7 +13,7 @@ resource "azurerm_resource_group" "pro" {
 }
 
 ###############################################
-# RESOURCE GROUP LOCKS (TERRASCAN)
+# RESOURCE GROUP LOCKS
 ###############################################
 
 resource "azurerm_management_lock" "rg_pre_lock" {
@@ -29,7 +29,7 @@ resource "azurerm_management_lock" "rg_pro_lock" {
 }
 
 ###############################################
-# LOG ANALYTICS WORKSPACE (PARA LOGGING KV)
+# LOG ANALYTICS WORKSPACE
 ###############################################
 
 resource "azurerm_log_analytics_workspace" "law" {
@@ -41,7 +41,7 @@ resource "azurerm_log_analytics_workspace" "law" {
 }
 
 ###############################################
-# NETWORKING PRE (KV PRIVATE ENDPOINT)
+# NETWORKING PRE
 ###############################################
 
 resource "azurerm_virtual_network" "kv_vnet" {
@@ -84,7 +84,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_link" {
 }
 
 ###############################################
-# NETWORKING PRO (KV PRIVATE ENDPOINT)
+# NETWORKING PRO
 ###############################################
 
 resource "azurerm_virtual_network" "kv_vnet_pro" {
@@ -133,21 +133,18 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_link_pro" {
 module "keyvault_pre" {
   source = "./modules/keyvault"
 
-  project             = var.project
-  environment         = "pre"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.pre.name
-  tenant_id           = var.arm_tenant_id
-
-  ghcr_token = var.ghcr_token
-  api_key    = var.api_key
-  jwt_secret = var.jwt_secret
-
-  allowed_ip_ranges       = []
-  secrets_expiration_date = "2026-12-31T00:00:00Z"
-
-  subnet_id                   = azurerm_subnet.kv_subnet.id
-  log_analytics_workspace_id  = azurerm_log_analytics_workspace.law.id
+  project                    = var.project
+  environment                = "pre"
+  location                   = var.location
+  resource_group_name        = azurerm_resource_group.pre.name
+  tenant_id                  = var.arm_tenant_id
+  ghcr_token                 = var.ghcr_token
+  api_key                    = var.api_key
+  jwt_secret                 = var.jwt_secret
+  allowed_ip_ranges          = []
+  secrets_expiration_date    = "2026-12-31T00:00:00Z"
+  subnet_id                  = azurerm_subnet.kv_subnet.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
 }
 
 ###############################################
@@ -157,21 +154,18 @@ module "keyvault_pre" {
 module "keyvault_pro" {
   source = "./modules/keyvault"
 
-  project             = var.project
-  environment         = "pro"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.pro.name
-  tenant_id           = var.arm_tenant_id
-
-  ghcr_token = var.ghcr_token
-  api_key    = var.api_key
-  jwt_secret = var.jwt_secret
-
-  allowed_ip_ranges       = []
-  secrets_expiration_date = "2026-12-31T00:00:00Z"
-
-  subnet_id                   = azurerm_subnet.kv_subnet_pro.id
-  log_analytics_workspace_id  = azurerm_log_analytics_workspace.law.id
+  project                    = var.project
+  environment                = "pro"
+  location                   = var.location
+  resource_group_name        = azurerm_resource_group.pro.name
+  tenant_id                  = var.arm_tenant_id
+  ghcr_token                 = var.ghcr_token
+  api_key                    = var.api_key
+  jwt_secret                 = var.jwt_secret
+  allowed_ip_ranges          = []
+  secrets_expiration_date    = "2026-12-31T00:00:00Z"
+  subnet_id                  = azurerm_subnet.kv_subnet_pro.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
 }
 
 ###############################################
