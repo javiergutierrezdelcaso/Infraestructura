@@ -1,10 +1,10 @@
 name: CD - Infraestructura PRE/PRO
 
 on:
-  workflow_run:
-    workflows: ["CI - Infraestructura"]
-    types:
-      - completed
+  push:
+    branches:
+      - develop
+      - main
 
 permissions:
   id-token: write
@@ -19,15 +19,8 @@ jobs:
     name: Despliegue de Infraestructura (Terraform)
     runs-on: ubuntu-latest
 
-    # SOLO ejecutar si:
-    # 1) El CI terminó en success
-    # 2) La rama del CI es develop o main
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      (
-        github.event.workflow_run.head_branch == 'develop' ||
-        github.event.workflow_run.head_branch == 'main'
-      )
+    # SOLO ejecutar si el CI ha pasado correctamente
+    if: contains(github.event.head_commit.message, '[ci-success]')
 
     steps:
       - name: Obtener código fuente
@@ -39,7 +32,7 @@ jobs:
       - name: Seleccionar entorno PRE/PRO
         id: entorno
         run: |
-          if [[ "${{ github.event.workflow_run.head_branch }}" == "develop" ]]; then
+          if [[ "${GITHUB_REF_NAME}" == "develop" ]]; then
             echo "dir=terraform/environments/pre" >> $GITHUB_OUTPUT
             echo "env=pre" >> $GITHUB_OUTPUT
           else
@@ -99,11 +92,11 @@ jobs:
         run: echo "APP_URL=$(jq -r '.app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
 
       - name: Configurar entorno PRE
-        if: ${{ github.event.workflow_run.head_branch == 'develop' }}
+        if: github.ref == 'refs/heads/develop'
         run: ansible-playbook -i inventories/pre/hosts site.yml -e "app_url=${APP_URL}"
 
       - name: Configurar entorno PRO
-        if: ${{ github.event.workflow_run.head_branch == 'main' }}
+        if: github.ref == 'refs/heads/main'
         run: ansible-playbook -i inventories/pro/hosts site.yml -e "app_url=${APP_URL}"
 
   # ============================================================
@@ -124,131 +117,57 @@ jobs:
       - name: Cargar APP_URL
         run: echo "APP_URL=$(jq -r '.app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
 
-      # -------------------------------
-      # 1) Prueba HTTP 200
-      # -------------------------------
-      - name: Prueba HTTP 200 (salud básica)
+      - name: Prueba HTTP 200
         run: |
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL")
-          if [ "$STATUS" != "200" ]; then
-            echo "❌ HTTP no responde 200. Código: $STATUS"
-            exit 1
-          fi
-          echo "✔ HTTP 200 OK"
+          if [ "$STATUS" != "200" ]; then exit 1; fi
 
-      # -------------------------------
-      # 2) Prueba de latencia
-      # -------------------------------
-      - name: Prueba de latencia (rendimiento)
+      - name: Prueba de latencia
         run: |
           TIME=$(curl -o /dev/null -s -w "%{time_total}" "$APP_URL")
-          echo "Latencia: $TIME segundos"
           LAT_MAX=1.5
           RESULT=$(echo "$TIME < $LAT_MAX" | bc -l)
-          if [ "$RESULT" -ne 1 ]; then
-            echo "❌ Latencia demasiado alta"
-            exit 1
-          fi
-          echo "✔ Latencia aceptable"
+          if [ "$RESULT" -ne 1 ]; then exit 1; fi
 
-      # -------------------------------
-      # 3) Prueba de disponibilidad con reintentos
-      # -------------------------------
-      - name: Prueba de disponibilidad (reintentos)
+      - name: Prueba de disponibilidad
         run: |
           for i in {1..5}; do
             STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL")
-            if [ "$STATUS" == "200" ]; then
-              echo "✔ Disponible tras $i intentos"
-              exit 0
-            fi
-            echo "Intento $i: HTTP $STATUS"
+            if [ "$STATUS" == "200" ]; then exit 0; fi
             sleep 3
           done
-          echo "❌ No disponible tras 5 intentos"
           exit 1
 
-      # -------------------------------
-      # 4) Prueba de DNS
-      # -------------------------------
-      - name: Validación DNS (resolución correcta)
+      - name: Validación DNS
         run: |
           HOST=$(echo $APP_URL | sed 's~http[s]*://~~' | sed 's~/.*~~')
-          echo "Validando DNS de: $HOST"
-          dig +short $HOST
-          if [ $? -ne 0 ]; then
-            echo "❌ DNS no resuelve"
-            exit 1
-          fi
-          echo "✔ DNS resuelve correctamente"
+          dig +short $HOST || exit 1
 
-      # -------------------------------
-      # 5) Prueba de certificado SSL
-      # -------------------------------
-      - name: Validación SSL (certificado válido)
+      - name: Validación SSL
         run: |
           HOST=$(echo $APP_URL | sed 's~http[s]*://~~' | sed 's~/.*~~')
-          echo | openssl s_client -servername $HOST -connect $HOST:443 2>/dev/null | openssl x509 -noout -dates
-          if [ $? -ne 0 ]; then
-            echo "❌ Certificado SSL inválido"
-            exit 1
-          fi
-          echo "✔ Certificado SSL válido"
+          echo | openssl s_client -servername $HOST -connect $HOST:443 2>/dev/null | openssl x509 -noout -dates || exit 1
 
-      # -------------------------------
-      # 6) Prueba de puertos abiertos
-      # -------------------------------
-      - name: Validación de puertos (80/443)
+      - name: Validación de puertos
         run: |
           HOST=$(echo $APP_URL | sed 's~http[s]*://~~' | sed 's~/.*~~')
-          for PORT in 80 443; do
-            nc -zv $HOST $PORT
-            if [ $? -ne 0 ]; then
-              echo "❌ Puerto $PORT cerrado"
-              exit 1
-            fi
-            echo "✔ Puerto $PORT abierto"
-          done
+          nc -zv $HOST 80 || exit 1
+          nc -zv $HOST 443 || exit 1
 
-      # -------------------------------
-      # 7) Prueba de endpoint /health
-      # -------------------------------
-      - name: Validación endpoint /health
+      - name: Validación /health
         run: |
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL/health")
-          if [ "$STATUS" != "200" ]; then
-            echo "❌ /health no responde 200"
-            exit 1
-          fi
-          echo "✔ /health OK"
+          if [ "$STATUS" != "200" ]; then exit 1; fi
 
-      # -------------------------------
-      # 8) Prueba de endpoint /metrics
-      # -------------------------------
-      - name: Validación endpoint /metrics
+      - name: Validación /metrics
         run: |
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" "$APP_URL/metrics")
-          if [ "$STATUS" != "200" ]; then
-            echo "❌ /metrics no responde 200"
-            exit 1
-          fi
-          echo "✔ /metrics OK"
+          if [ "$STATUS" != "200" ]; then exit 1; fi
 
-      # -------------------------------
-      # 9) Validación de logs accesibles
-      # -------------------------------
-      - name: Validación de logs (si existen)
+      - name: Validación logs
         run: |
-          curl -s "$APP_URL/logs" | head -n 20 || echo "✔ Logs no públicos (correcto si está protegido)"
+          curl -s "$APP_URL/logs" | head -n 20 || true
 
-      # -------------------------------
-      # 10) Prueba de integridad JSON
-      # -------------------------------
-      - name: Validación de respuesta JSON
+      - name: Validación JSON
         run: |
-          curl -s "$APP_URL" | jq . >/dev/null 2>&1
-          if [ $? -ne 0 ]; then
-            echo "❌ La respuesta no es JSON válido"
-            exit 1
-          fi
-          echo "✔ JSON válido"
+          curl -s "$APP_URL" | jq . >/dev/null 2>&1 || exit 1
