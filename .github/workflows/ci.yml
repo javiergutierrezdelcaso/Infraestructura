@@ -166,7 +166,11 @@ jobs:
 
       - name: Terrascan
         working-directory: .
-        run: terrascan scan -d terraform -i terraform --config-path terraform/.terrascan.toml
+        run: |
+          terrascan scan \
+            -d terraform \
+            -i terraform \
+            --config-path terraform/.terrascan.toml
 
 
 
