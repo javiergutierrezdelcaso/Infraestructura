@@ -32,15 +32,12 @@ variable "jwt_secret" {
   sensitive = true
 }
 
-variable "subnet_id" {
-  type = string
-}
-
-variable "log_analytics_workspace_id" {
-  type = string
-}
-
 variable "secrets_expiration_date" {
   type    = string
   default = "2026-12-31T00:00:00Z"
+}
+
+variable "sku_name" {
+  type    = string
+  default = "B1"
 }
