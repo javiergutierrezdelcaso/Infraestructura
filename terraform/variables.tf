@@ -7,6 +7,10 @@ variable "project" {
   description = "Nombre del proyecto."
   default     = "ecoanalyzer"
 }
+Variable "environment" {
+  type        = string
+  description = "Entorno de despliegue (pre o pro)."
+}
 
 variable "location" {
   type        = string
