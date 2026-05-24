@@ -165,6 +165,10 @@ jobs:
 
       - name: Gitleaks
         run: gitleaks detect --source . --no-banner
+      - name: Debug estructura
+        run: |
+          echo "Contenido de terraform/modules:"
+          ls -R terraform/modules
 
       - name: Validar referencias Key Vault en Terraform
         run: |
