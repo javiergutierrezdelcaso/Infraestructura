@@ -2,6 +2,9 @@ variable "project" {
   type    = string
   default = "ecoanalyzer"
 }
+variable "environment" {
+  type = string
+}
 
 variable "location" {
   type    = string
