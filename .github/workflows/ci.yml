@@ -153,8 +153,9 @@ jobs:
 
       - name: Checkov (cumplimiento + secretos)
         run: |
-          checkov -d .
-          checkov -d . --check CKV_SECRET_6
+          checkov -d . --config-file .checkov.yaml
+          checkov -d . --check CKV_SECRET_6 --config-file .checkov.yaml
+
 
       - name: Instalar Terrascan
         run: |
