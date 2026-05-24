@@ -18,6 +18,7 @@ env:
   TF_VAR_arm_client_id:       ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
   TF_VAR_arm_client_secret:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
   TF_VAR_arm_tenant_id:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+  TF_VAR_tenant_id: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
   TF_VAR_arm_subscription_id: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
 
   TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
