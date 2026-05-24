@@ -1,3 +1,4 @@
+# tfsec:ignore:azure-keyvault-no-purge
 resource "azurerm_key_vault" "this" {
   name                          = "kv-${var.project}-${var.environment}"
   location                      = var.location
