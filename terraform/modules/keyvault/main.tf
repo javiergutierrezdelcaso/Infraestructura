@@ -78,9 +78,8 @@ resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
   target_resource_id         = azurerm_key_vault.this.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
 
-  log {
+  enabled_log {
     category = "AuditEvent"
-    enabled  = true
   }
 
   metric {
@@ -108,4 +107,3 @@ output "api_key_secret_uri" {
 output "jwt_secret_secret_uri" {
   value = azurerm_key_vault_secret.jwt_secret.id
 }
-
