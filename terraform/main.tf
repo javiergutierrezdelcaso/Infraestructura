@@ -173,33 +173,25 @@ module "keyvault_pro" {
 ###############################################
 
 module "app_service_pre" {
-  source = "./modules/app_service"
-
+  source              = "../modules/app_service"
   project             = var.project
   environment         = "pre"
   location            = var.location
   resource_group_name = azurerm_resource_group.pre.name
-
-  ghcr_token_secret_uri = module.keyvault_pre.ghcr_token_secret_uri
-  api_key_secret_uri    = module.keyvault_pre.api_key_secret_uri
-  jwt_secret_secret_uri = module.keyvault_pre.jwt_secret_secret_uri
+  sku_name            = var.sku_name
 }
+
 
 
 ###############################################
 # APP SERVICE PRO
 ###############################################
-
 module "app_service_pro" {
-  source = "./modules/app_service"
-
+  source              = "../modules/app_service"
   project             = var.project
   environment         = "pro"
   location            = var.location
   resource_group_name = azurerm_resource_group.pro.name
-
-  ghcr_token_secret_uri = module.keyvault_pro.ghcr_token_secret_uri
-  api_key_secret_uri    = module.keyvault_pro.api_key_secret_uri
-  jwt_secret_secret_uri = module.keyvault_pro.jwt_secret_secret_uri
+  sku_name            = var.sku_name
 }
 
