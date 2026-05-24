@@ -12,9 +12,11 @@ terraform {
 provider "azurerm" {
   features {}
 
-  use_msi = false
+  # Desactivar CLI y MSI obligatoriamente
   use_cli = false
+  use_msi = false
 
+  # Autenticación ARM (obligatoria en GitHub Actions)
   client_id       = var.arm_client_id
   client_secret   = var.arm_client_secret
   tenant_id       = var.arm_tenant_id
