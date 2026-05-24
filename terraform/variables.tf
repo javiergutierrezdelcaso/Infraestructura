@@ -10,6 +10,7 @@ variable "project" {
 variable "location" {
   type        = string
   description = "Región de Azure."
+  default     = "spaincentral"
 }
 
 variable "arm_client_id" {
