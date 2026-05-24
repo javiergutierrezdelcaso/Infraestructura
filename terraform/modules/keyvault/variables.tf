@@ -18,6 +18,15 @@ variable "tenant_id" {
   type = string
 }
 
+variable "allowed_ip_ranges" {
+  type    = list(string)
+  default = []
+}
+
+variable "secrets_expiration_date" {
+  type = string
+}
+
 variable "ghcr_token" {
   type      = string
   sensitive = true
@@ -33,11 +42,6 @@ variable "jwt_secret" {
   sensitive = true
 }
 
-variable "allowed_ip_ranges" {
-  type    = list(string)
-  default = []
-}
-
-variable "secrets_expiration_date" {
+variable "subnet_id" {
   type = string
 }

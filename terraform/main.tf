@@ -31,6 +31,8 @@ module "keyvault_pre" {
 
   allowed_ip_ranges       = []
   secrets_expiration_date = "2026-12-31T00:00:00Z"
+
+  subnet_id = azurerm_subnet.kv_subnet.id
 }
 
 ###############################################
@@ -52,6 +54,8 @@ module "keyvault_pro" {
 
   allowed_ip_ranges       = []
   secrets_expiration_date = "2026-12-31T00:00:00Z"
+
+  subnet_id = azurerm_subnet.kv_subnet_pro.id
 }
 
 ###############################################
@@ -91,6 +95,12 @@ resource "azurerm_virtual_network" "kv_vnet" {
   address_space       = ["10.10.0.0/16"]
 }
 
+resource "azurerm_network_security_group" "kv_nsg_pre" {
+  name                = "${var.project}-pre-kv-nsg"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pre.name
+}
+
 resource "azurerm_subnet" "kv_subnet" {
   name                 = "kv-subnet"
   resource_group_name  = azurerm_resource_group.pre.name
@@ -98,12 +108,6 @@ resource "azurerm_subnet" "kv_subnet" {
   address_prefixes     = ["10.10.1.0/24"]
 
   private_endpoint_network_policies_enabled = true
-}
-
-resource "azurerm_network_security_group" "kv_nsg_pre" {
-  name                = "${var.project}-pre-kv-nsg"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.pre.name
 }
 
 resource "azurerm_subnet_network_security_group_association" "kv_subnet_nsg_pre" {
@@ -121,20 +125,6 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_link" {
   resource_group_name   = azurerm_resource_group.pre.name
   private_dns_zone_name = azurerm_private_dns_zone.kv_dns.name
   virtual_network_id    = azurerm_virtual_network.kv_vnet.id
-}
-
-resource "azurerm_private_endpoint" "kv_pe" {
-  name                = "${var.project}-pre-kv-pe"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.pre.name
-  subnet_id           = azurerm_subnet.kv_subnet.id
-
-  private_service_connection {
-    name                           = "kv-connection"
-    private_connection_resource_id = module.keyvault_pre.key_vault_id
-    subresource_names              = ["vault"]
-    is_manual_connection           = false
-  }
 }
 
 ###############################################
@@ -178,18 +168,4 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_link_pro" {
   resource_group_name   = azurerm_resource_group.pro.name
   private_dns_zone_name = azurerm_private_dns_zone.kv_dns_pro.name
   virtual_network_id    = azurerm_virtual_network.kv_vnet_pro.id
-}
-
-resource "azurerm_private_endpoint" "kv_pe_pro" {
-  name                = "${var.project}-pro-kv-pe"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.pro.name
-  subnet_id           = azurerm_subnet.kv_subnet_pro.id
-
-  private_service_connection {
-    name                           = "kv-connection-pro"
-    private_connection_resource_id = module.keyvault_pro.key_vault_id
-    subresource_names              = ["vault"]
-    is_manual_connection           = false
-  }
 }

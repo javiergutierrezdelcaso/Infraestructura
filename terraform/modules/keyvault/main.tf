@@ -17,27 +17,44 @@ resource "azurerm_key_vault" "this" {
 }
 
 resource "azurerm_key_vault_secret" "ghcr_token" {
-  name            = "GHCR-TOKEN"
-  value           = var.ghcr_token
-  key_vault_id    = azurerm_key_vault.this.id
-  content_type    = "text/plain"
+  name         = "ghcr-token"
+  value        = var.ghcr_token
+  key_vault_id = azurerm_key_vault.this.id
+
+  content_type = "token"
   expiration_date = var.secrets_expiration_date
 }
 
 resource "azurerm_key_vault_secret" "api_key" {
-  name            = "API-KEY"
-  value           = var.api_key
-  key_vault_id    = azurerm_key_vault.this.id
-  content_type    = "text/plain"
+  name         = "api-key"
+  value        = var.api_key
+  key_vault_id = azurerm_key_vault.this.id
+
+  content_type   = "api-key"
   expiration_date = var.secrets_expiration_date
 }
 
 resource "azurerm_key_vault_secret" "jwt_secret" {
-  name            = "JWT-SECRET"
-  value           = var.jwt_secret
-  key_vault_id    = azurerm_key_vault.this.id
-  content_type    = "text/plain"
+  name         = "jwt-secret"
+  value        = var.jwt_secret
+  key_vault_id = azurerm_key_vault.this.id
+
+  content_type   = "jwt-secret"
   expiration_date = var.secrets_expiration_date
+}
+
+resource "azurerm_private_endpoint" "this" {
+  name                = "${var.project}-${var.environment}-kv-pe"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  subnet_id           = var.subnet_id
+
+  private_service_connection {
+    name                           = "kv-connection-${var.environment}"
+    private_connection_resource_id = azurerm_key_vault.this.id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
+  }
 }
 
 output "key_vault_id" {
