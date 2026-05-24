@@ -1,17 +1,21 @@
 variable "project" {
-  type = string
+  type    = string
+  default = "ecoanalyzer"
 }
 
 variable "location" {
-  type = string
+  type    = string
+  default = "spaincentral"
 }
 
 variable "resource_group_name" {
-  type = string
+  type    = string
+  default = "rg-ecoanalyzer"
 }
 
 variable "tenant_id" {
-  type = string
+  type    = string
+  default = ""
 }
 
 variable "ghcr_token" {
@@ -30,9 +34,11 @@ variable "jwt_secret" {
 }
 
 variable "subnet_id" {
-  type = string
+  type    = string
+  default = ""
 }
 
 variable "log_analytics_workspace_id" {
-  type = string
+  type    = string
+  default = ""
 }

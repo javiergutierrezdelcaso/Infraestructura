@@ -8,7 +8,7 @@ variable "environment" {
 
 variable "location" {
   type    = string
-  default = "westeurope"
+  default = "spaincentral"
 }
 
 variable "arm_client_id" {
