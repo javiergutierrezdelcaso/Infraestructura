@@ -1,15 +1,15 @@
 variable "project" {
-  type        = string
-  default     = "ecoanalyzer"
+  type    = string
+  default = "ecoanalyzer"
 }
 
 variable "location" {
-  type        = string
-  default     = "spaincentral"
+  type    = string
+  default = "spaincentral"
 }
 
 variable "environment" {
-  type        = string
+  type = string
 }
 
 variable "arm_client_id" {
