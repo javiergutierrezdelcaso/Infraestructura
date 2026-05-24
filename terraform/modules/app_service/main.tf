@@ -20,6 +20,12 @@ resource "azurerm_linux_web_app" "this" {
     minimum_tls_version = "1.2"
     health_check_path   = "/health"
   }
+
+  app_settings = {
+    GHCR_TOKEN = "@Microsoft.KeyVault(SecretUri=${var.ghcr_token_secret_uri})"
+    API_KEY    = "@Microsoft.KeyVault(SecretUri=${var.api_key_secret_uri})"
+    JWT_SECRET = "@Microsoft.KeyVault(SecretUri=${var.jwt_secret_secret_uri})"
+  }
 }
 
 output "app_url" {

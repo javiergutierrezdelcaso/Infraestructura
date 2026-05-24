@@ -13,3 +13,15 @@ variable "location" {
 variable "resource_group_name" {
   type = string
 }
+
+variable "ghcr_token_secret_uri" {
+  type = string
+}
+
+variable "api_key_secret_uri" {
+  type = string
+}
+
+variable "jwt_secret_secret_uri" {
+  type = string
+}

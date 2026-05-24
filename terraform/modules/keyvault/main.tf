@@ -70,7 +70,7 @@ resource "azurerm_private_endpoint" "this" {
 }
 
 ###############################################
-# DIAGNOSTIC SETTINGS (LOGGING KV)
+# DIAGNOSTIC SETTINGS (LOGGING)
 ###############################################
 
 resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
@@ -96,3 +96,16 @@ resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
 output "key_vault_id" {
   value = azurerm_key_vault.this.id
 }
+
+output "ghcr_token_secret_uri" {
+  value = azurerm_key_vault_secret.ghcr_token.id
+}
+
+output "api_key_secret_uri" {
+  value = azurerm_key_vault_secret.api_key.id
+}
+
+output "jwt_secret_secret_uri" {
+  value = azurerm_key_vault_secret.jwt_secret.id
+}
+
