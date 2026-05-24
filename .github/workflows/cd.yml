@@ -18,7 +18,16 @@ jobs:
   infraestructura:
     name: Despliegue de Infraestructura (Terraform)
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    # SOLO ejecutar si:
+    # 1) El CI terminó en success
+    # 2) La rama del CI es develop o main
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      (
+        github.event.workflow_run.head_branch == 'develop' ||
+        github.event.workflow_run.head_branch == 'main'
+      )
 
     steps:
       - name: Obtener código fuente
@@ -30,7 +39,7 @@ jobs:
       - name: Seleccionar entorno PRE/PRO
         id: entorno
         run: |
-          if [[ "${GITHUB_REF_NAME}" == "develop" ]]; then
+          if [[ "${{ github.event.workflow_run.head_branch }}" == "develop" ]]; then
             echo "dir=terraform/environments/pre" >> $GITHUB_OUTPUT
             echo "env=pre" >> $GITHUB_OUTPUT
           else
@@ -90,11 +99,11 @@ jobs:
         run: echo "APP_URL=$(jq -r '.app_url.value' terraform-outputs.json)" >> $GITHUB_ENV
 
       - name: Configurar entorno PRE
-        if: github.ref == 'refs/heads/develop'
+        if: ${{ github.event.workflow_run.head_branch == 'develop' }}
         run: ansible-playbook -i inventories/pre/hosts site.yml -e "app_url=${APP_URL}"
 
       - name: Configurar entorno PRO
-        if: github.ref == 'refs/heads/main'
+        if: ${{ github.event.workflow_run.head_branch == 'main' }}
         run: ansible-playbook -i inventories/pro/hosts site.yml -e "app_url=${APP_URL}"
 
   # ============================================================
