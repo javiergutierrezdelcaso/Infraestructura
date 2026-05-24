@@ -40,12 +40,50 @@ jobs:
         with:
           terraform_version: 1.9.5
 
+      - name: Login Azure CLI
+        run: |
+          az login --service-principal \
+            --username "${{ env.ARM_CLIENT_ID }}" \
+            --password "${{ env.ARM_CLIENT_SECRET }}" \
+            --tenant "${{ env.ARM_TENANT_ID }}"
+          az account set --subscription "${{ env.ARM_SUBSCRIPTION_ID }}"
+
       ############################################
       # VALIDACIÓN GLOBAL (FMT)
       ############################################
       - name: terraform fmt
         working-directory: terraform
         run: terraform fmt -recursive -check
+
+      ############################################
+      # PRE – LIMPIEZA DE LOCK HUÉRFANO
+      ############################################
+      - name: Eliminar lock huérfano PRE
+        run: |
+          CONTAINER="tfstate"
+          FILE="pre.tfstate"
+          LOCKFILE="${FILE}.lockinfo"
+
+          echo "Comprobando lock huérfano PRE: $LOCKFILE"
+
+          EXISTS=$(az storage blob exists \
+            --account-name tfstatejavier \
+            --container-name $CONTAINER \
+            --name $LOCKFILE \
+            --auth-mode login \
+            --query exists -o tsv)
+
+          if [ "$EXISTS" = "true" ]; then
+            echo "Lock PRE encontrado. Eliminando..."
+            az storage blob delete \
+              --account-name tfstatejavier \
+              --container-name $CONTAINER \
+              --name $LOCKFILE \
+              --auth-mode login
+            echo "Lock PRE eliminado."
+          else
+            echo "No hay lock PRE."
+          fi
 
       ############################################
       # VALIDACIÓN PRE
@@ -61,6 +99,36 @@ jobs:
       - name: Plan PRE
         working-directory: terraform/pre
         run: terraform plan -out=tfplan-pre
+
+      ############################################
+      # PRO – LIMPIEZA DE LOCK HUÉRFANO
+      ############################################
+      - name: Eliminar lock huérfano PRO
+        run: |
+          CONTAINER="tfstate"
+          FILE="pro.tfstate"
+          LOCKFILE="${FILE}.lockinfo"
+
+          echo "Comprobando lock huérfano PRO: $LOCKFILE"
+
+          EXISTS=$(az storage blob exists \
+            --account-name tfstatejavier \
+            --container-name $CONTAINER \
+            --name $LOCKFILE \
+            --auth-mode login \
+            --query exists -o tsv)
+
+          if [ "$EXISTS" = "true" ]; then
+            echo "Lock PRO encontrado. Eliminando..."
+            az storage blob delete \
+              --account-name tfstatejavier \
+              --container-name $CONTAINER \
+              --name $LOCKFILE \
+              --auth-mode login
+            echo "Lock PRO eliminado."
+          else
+            echo "No hay lock PRO."
+          fi
 
       ############################################
       # VALIDACIÓN PRO
@@ -103,14 +171,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # TFSEC
       - name: Instalar tfsec
         run: curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
 
       - name: tfsec
         run: tfsec .
 
-      # CHECKOV
       - name: Instalar Checkov
         run: pipx install checkov
 
@@ -119,7 +185,6 @@ jobs:
           checkov -d .
           checkov -d . --check CKV_SECRET_6
 
-      # TERRASCAN
       - name: Instalar Terrascan
         run: |
           curl -L https://github.com/tenable/terrascan/releases/download/v1.19.9/terrascan_1.19.9_Linux_x86_64.tar.gz -o terrascan.tar.gz
@@ -130,7 +195,6 @@ jobs:
       - name: Terrascan
         run: terrascan scan -d ./ -i terraform --non-recursive
 
-      # GITLEAKS
       - name: Instalar Gitleaks
         run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')_linux_x64.tar.gz -o gitleaks.tar.gz
@@ -140,7 +204,6 @@ jobs:
       - name: Gitleaks
         run: gitleaks detect --source . --no-banner
 
-      # VALIDAR REFERENCIAS KEY VAULT EN APP SERVICE
       - name: Validar referencias Key Vault en Terraform
         run: |
           grep -R "@Microsoft.KeyVault" -n . || (echo "No se encontraron referencias a Key Vault en app_settings" && exit 1)
