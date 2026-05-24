@@ -165,8 +165,9 @@ jobs:
           sudo mv terrascan /usr/local/bin/terrascan
 
       - name: Terrascan
-        working-directory: terraform
-        run: terrascan scan -d . -i terraform --config-path .terrascan.toml
+        working-directory: .
+        run: terrascan scan -d terraform -i terraform --config-path terraform/.terrascan.toml
+
 
 
 
