@@ -79,3 +79,61 @@ module "app_service_pro" {
   location            = var.location
   resource_group_name = azurerm_resource_group.pro.name
 }
+
+###############################################
+# NETWORKING FOR PRIVATE ENDPOINT (PRE)
+###############################################
+
+resource "azurerm_virtual_network" "kv_vnet" {
+  name                = "${var.project}-pre-vnet"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pre.name
+  address_space       = ["10.10.0.0/16"]
+}
+
+resource "azurerm_subnet" "kv_subnet" {
+  name                 = "kv-subnet"
+  resource_group_name  = azurerm_resource_group.pre.name
+  virtual_network_name = azurerm_virtual_network.kv_vnet.name
+  address_prefixes     = ["10.10.1.0/24"]
+
+  private_endpoint_network_policies_enabled = true
+}
+
+resource "azurerm_private_dns_zone" "kv_dns" {
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.pre.name
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_link" {
+  name                  = "kv-dns-link"
+  resource_group_name   = azurerm_resource_group.pre.name
+  private_dns_zone_name = azurerm_private_dns_zone.kv_dns.name
+  virtual_network_id    = azurerm_virtual_network.kv_vnet.id
+}
+
+resource "azurerm_private_endpoint" "kv_pe" {
+  name                = "${var.project}-pre-kv-pe"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pre.name
+  subnet_id           = azurerm_subnet.kv_subnet.id
+
+  private_service_connection {
+    name                           = "kv-connection"
+    private_connection_resource_id = module.keyvault_pre.key_vault_id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
+  }
+}
+
+###############################################
+# OUTPUTS
+###############################################
+
+output "pre_app_url" {
+  value = module.app_service_pre.app_url
+}
+
+output "pro_app_url" {
+  value = module.app_service_pro.app_url
+}

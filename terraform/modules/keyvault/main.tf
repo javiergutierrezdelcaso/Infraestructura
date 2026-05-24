@@ -8,11 +8,11 @@ resource "azurerm_key_vault" "this" {
   purge_protection_enabled   = true
   soft_delete_retention_days = 7
 
+  public_network_access_enabled = false   # CKV_AZURE_189
+
   network_acls {
     default_action = "Deny"
-    bypass         = "AzureServices"
-
-    ip_rules = var.allowed_ip_ranges
+    bypass         = "None"
   }
 }
 
@@ -38,4 +38,8 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   key_vault_id    = azurerm_key_vault.this.id
   content_type    = "text/plain"
   expiration_date = var.secrets_expiration_date
+}
+
+output "key_vault_id" {
+  value = azurerm_key_vault.this.id
 }
