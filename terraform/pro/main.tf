@@ -43,9 +43,9 @@ module "keyvault_pro" {
   resource_group_name = azurerm_resource_group.pro.name
   tenant_id           = var.tenant_id
   client_object_id    = var.client_object_id
-  ghcr_token = var.ghcr_token
-  api_key    = var.api_key
-  jwt_secret = var.jwt_secret
+  ghcr_token          = var.ghcr_token
+  api_key             = var.api_key
+  jwt_secret          = var.jwt_secret
 
   subnet_id                  = module.network_pro.subnet_id
   log_analytics_workspace_id = module.log_analytics_pro.workspace_id
