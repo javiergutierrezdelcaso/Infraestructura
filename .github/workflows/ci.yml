@@ -166,8 +166,7 @@ jobs:
 
       - name: Terrascan
         working-directory: .
-        run: terrascan scan -d terraform -i terraform
-
+        run: terrascan scan -d . -i terraform --iac-modules-download-path ./modules
 
       - name: Instalar Gitleaks
         run: |
