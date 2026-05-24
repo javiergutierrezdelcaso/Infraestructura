@@ -100,6 +100,17 @@ resource "azurerm_subnet" "kv_subnet" {
   private_endpoint_network_policies_enabled = true
 }
 
+resource "azurerm_network_security_group" "kv_nsg_pre" {
+  name                = "${var.project}-pre-kv-nsg"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.pre.name
+}
+
+resource "azurerm_subnet_network_security_group_association" "kv_subnet_nsg_pre" {
+  subnet_id                 = azurerm_subnet.kv_subnet.id
+  network_security_group_id = azurerm_network_security_group.kv_nsg_pre.id
+}
+
 resource "azurerm_private_dns_zone" "kv_dns" {
   name                = "privatelink.vaultcore.azure.net"
   resource_group_name = azurerm_resource_group.pre.name
@@ -125,6 +136,10 @@ resource "azurerm_private_endpoint" "kv_pe" {
     is_manual_connection           = false
   }
 }
+
+###############################################
+# NETWORKING FOR PRIVATE ENDPOINT (PRO)
+###############################################
 
 resource "azurerm_virtual_network" "kv_vnet_pro" {
   name                = "${var.project}-pro-vnet"
