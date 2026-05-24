@@ -168,7 +168,8 @@ jobs:
 
       - name: Validar referencias Key Vault en Terraform
         run: |
-          grep -R "@Microsoft.KeyVault" -n . || (echo "No se encontraron referencias a Key Vault en app_settings" && exit 1)
+          grep -R "Microsoft.KeyVault" -n terraform/modules/app_service
+          grep -R "key_vault_reference" -n terraform
 
   ############################################
   # 3. VALIDACIÓN DE CONFIGURACIÓN (ANSIBLE)
