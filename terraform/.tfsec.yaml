@@ -1,2 +1,5 @@
-severity_overrides:
-  azure-keyvault-no-purge: off
+# tfsec:ignore:azure-keyvault-no-purge
+resource "azurerm_key_vault" "this" {
+  purge_protection_enabled = false
+  ...
+}
