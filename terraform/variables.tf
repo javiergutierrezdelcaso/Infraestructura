@@ -5,6 +5,7 @@
 variable "project" {
   type        = string
   description = "Nombre del proyecto."
+  default     = "ecoanalyzer"
 }
 
 variable "location" {
@@ -42,16 +43,19 @@ variable "ghcr_token" {
   type        = string
   sensitive   = true
   description = "Token GHCR para almacenar en Key Vault."
+  default     = ""
 }
 
 variable "api_key" {
   type        = string
   sensitive   = true
   description = "API Key para almacenar en Key Vault."
+  default     = ""
 }
 
 variable "jwt_secret" {
   type        = string
   sensitive   = true
   description = "JWT Secret para almacenar en Key Vault."
+  default     = ""
 }
