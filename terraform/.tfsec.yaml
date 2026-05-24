@@ -1,0 +1,5 @@
+# tfsec:ignore:azure-keyvault-no-purge
+resource "azurerm_key_vault" "this" {
+  purge_protection_enabled = false
+  ...
+}

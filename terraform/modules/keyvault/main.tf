@@ -1,3 +1,7 @@
+# checkov:skip=CKV_AZURE_110: purge protection no disponible en Azure for Students
+# checkov:skip=CKV_AZURE_42: soft delete habilitado, purge protection no permitida
+# checkov:skip=CKV_AZURE_189: PNA no puede deshabilitarse en Azure for Students
+# tfsec:ignore:azure-keyvault-no-purge
 resource "azurerm_key_vault" "this" {
   name                          = "kv-${var.project}-${var.environment}"
   location                      = var.location

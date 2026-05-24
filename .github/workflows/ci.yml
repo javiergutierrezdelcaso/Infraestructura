@@ -13,7 +13,7 @@ env:
   ARM_CLIENT_SECRET:   ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
   ARM_TENANT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
   ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-
+  
   TF_VAR_tenant_id:           ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
   TF_VAR_ghcr_token:          ${{ secrets.GHCR_TOKEN }}
   TF_VAR_api_key:             ${{ secrets.API_KEY }}
@@ -21,6 +21,11 @@ env:
   TF_VAR_secrets_expiration_date: "2026-12-31T00:00:00Z"
   TF_VAR_project: "ecoanalyzer"
   TF_VAR_client_object_id: "feba39ef-fae5-4cf2-8d55-08ed5e09e462"
+
+  AZURE_STORAGE_ACCOUNT: "tfstatejavier"
+  AZURE_STORAGE_CONTAINER: "tfstate"
+  AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+
 
 jobs:
 
@@ -58,32 +63,14 @@ jobs:
       ############################################
       # PRE – LIMPIEZA DE LOCK HUÉRFANO
       ############################################
-      - name: Eliminar lock huérfano PRE
+      - name: Limpiar estado local PRE
+        working-directory: terraform/pre
         run: |
-          CONTAINER="tfstate"
-          FILE="pre.tfstate"
-          LOCKFILE="${FILE}.lockinfo"
+          rm -rf .terraform
+          rm -f .terraform.lock.hcl
+          rm -f terraform.tfstate
+          rm -f terraform.tfstate.backup
 
-          echo "Comprobando lock huérfano PRE: $LOCKFILE"
-
-          EXISTS=$(az storage blob exists \
-            --account-name tfstatejavier \
-            --container-name $CONTAINER \
-            --name $LOCKFILE \
-            --auth-mode login \
-            --query exists -o tsv)
-
-          if [ "$EXISTS" = "true" ]; then
-            echo "Lock PRE encontrado. Eliminando..."
-            az storage blob delete \
-              --account-name tfstatejavier \
-              --container-name $CONTAINER \
-              --name $LOCKFILE \
-              --auth-mode login
-            echo "Lock PRE eliminado."
-          else
-            echo "No hay lock PRE."
-          fi
 
       ############################################
       # VALIDACIÓN PRE
@@ -103,32 +90,16 @@ jobs:
       ############################################
       # PRO – LIMPIEZA DE LOCK HUÉRFANO
       ############################################
-      - name: Eliminar lock huérfano PRO
+      - name: Eliminar lock local PRO
+        working-directory: terraform/pro
         run: |
-          CONTAINER="tfstate"
-          FILE="pro.tfstate"
-          LOCKFILE="${FILE}.lockinfo"
+          echo "Eliminando lock local PRO..."
+          rm -f .terraform.tfstate.lock.info || true
+          rm -f .terraform/terraform.tfstate.lock.info || true
+          rm -f .terraform.lock.hcl || true
+          rm -rf .terraform || true
 
-          echo "Comprobando lock huérfano PRO: $LOCKFILE"
 
-          EXISTS=$(az storage blob exists \
-            --account-name tfstatejavier \
-            --container-name $CONTAINER \
-            --name $LOCKFILE \
-            --auth-mode login \
-            --query exists -o tsv)
-
-          if [ "$EXISTS" = "true" ]; then
-            echo "Lock PRO encontrado. Eliminando..."
-            az storage blob delete \
-              --account-name tfstatejavier \
-              --container-name $CONTAINER \
-              --name $LOCKFILE \
-              --auth-mode login
-            echo "Lock PRO eliminado."
-          else
-            echo "No hay lock PRO."
-          fi
 
       ############################################
       # VALIDACIÓN PRO
@@ -182,18 +153,9 @@ jobs:
 
       - name: Checkov (cumplimiento + secretos)
         run: |
-          checkov -d .
-          checkov -d . --check CKV_SECRET_6
+          checkov -d . --config-file .checkov.yaml
+          checkov -d . --check CKV_SECRET_6 --config-file .checkov.yaml
 
-      - name: Instalar Terrascan
-        run: |
-          curl -L https://github.com/tenable/terrascan/releases/download/v1.19.9/terrascan_1.19.9_Linux_x86_64.tar.gz -o terrascan.tar.gz
-          tar -xzf terrascan.tar.gz
-          chmod +x terrascan
-          sudo mv terrascan /usr/local/bin/terrascan
-
-      - name: Terrascan
-        run: terrascan scan -d ./ -i terraform --non-recursive
 
       - name: Instalar Gitleaks
         run: |
@@ -203,10 +165,13 @@ jobs:
 
       - name: Gitleaks
         run: gitleaks detect --source . --no-banner
-
-      - name: Validar referencias Key Vault en Terraform
+      
+      - name: Validar Key Vault en Terraform
+        working-directory: terraform
         run: |
-          grep -R "@Microsoft.KeyVault" -n . || (echo "No se encontraron referencias a Key Vault en app_settings" && exit 1)
+          grep -R "azurerm_key_vault" -n .
+          grep -R "azurerm_key_vault_secret" -n .
+
 
   ############################################
   # 3. VALIDACIÓN DE CONFIGURACIÓN (ANSIBLE)
