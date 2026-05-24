@@ -150,8 +150,6 @@ jobs:
 
       - name: Instalar Checkov
         run: pipx install checkov
-      - name: Debug path
-        run: pwd && ls -la
 
       - name: Checkov (cumplimiento + secretos)
         run: |
