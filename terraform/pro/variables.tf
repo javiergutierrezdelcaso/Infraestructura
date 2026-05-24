@@ -10,12 +10,11 @@ variable "location" {
 
 variable "resource_group_name" {
   type    = string
-  default = "rg-ecoanalyzer"
+  default = "rg-ecoanalyzer-pro"
 }
 
 variable "tenant_id" {
   type    = string
-  default = ""
 }
 
 variable "ghcr_token" {
@@ -34,11 +33,14 @@ variable "jwt_secret" {
 }
 
 variable "subnet_id" {
-  type    = string
-  default = ""
+  type = string
 }
 
 variable "log_analytics_workspace_id" {
+  type = string
+}
+
+variable "secrets_expiration_date" {
   type    = string
-  default = ""
+  default = "2026-12-31T00:00:00Z"
 }
