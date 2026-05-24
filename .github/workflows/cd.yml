@@ -19,9 +19,6 @@ jobs:
     name: Despliegue de Infraestructura (Terraform)
     runs-on: ubuntu-latest
 
-    # SOLO ejecutar si el CI ha pasado correctamente
-    if: contains(github.event.head_commit.message, '[ci-success]')
-
     steps:
       - name: Obtener código fuente
         uses: actions/checkout@v4
