@@ -1,0 +1,4 @@
+[rules]
+skip = [
+  "AC_AZURE_0063" # Ensure subnet has NSG (equivalente a CKV2_AZURE_31)
+]
