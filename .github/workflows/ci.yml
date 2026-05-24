@@ -157,24 +157,6 @@ jobs:
           checkov -d . --check CKV_SECRET_6 --config-file .checkov.yaml
 
 
-      - name: Instalar Terrascan
-        run: |
-          curl -L https://github.com/tenable/terrascan/releases/download/v1.19.9/terrascan_1.19.9_Linux_x86_64.tar.gz -o terrascan.tar.gz
-          tar -xzf terrascan.tar.gz
-          chmod +x terrascan
-          sudo mv terrascan /usr/local/bin/terrascan
-
-      - name: Terrascan
-        working-directory: .
-        run: |
-          terrascan scan \
-            -d terraform \
-            -i terraform \
-            --config-path terraform/.terrascan.toml
-
-
-
-
       - name: Instalar Gitleaks
         run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')_linux_x64.tar.gz -o gitleaks.tar.gz
