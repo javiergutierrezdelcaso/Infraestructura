@@ -29,6 +29,7 @@ jobs:
   ############################################
   # 1. VALIDACIÓN TERRAFORM (FMT, VALIDATE, PLAN PRE/PRO)
   ############################################
+  
   terraform-validation:
     name: Validación de Infraestructura (Terraform)
     runs-on: ubuntu-latest
