@@ -165,16 +165,13 @@ jobs:
 
       - name: Gitleaks
         run: gitleaks detect --source . --no-banner
-      - name: Debug estructura
+      
+      - name: Validar Key Vault en Terraform
         working-directory: terraform
         run: |
-          pwd
-          ls -R .
-      - name: Validar referencias Key Vault en Terraform
-        working-directory: terraform
-        run: |
-          grep -R "Microsoft.KeyVault" -n terraform/modules/app_service
-          grep -R "key_vault_reference" -n terraform
+          grep -R "azurerm_key_vault" -n .
+          grep -R "azurerm_key_vault_secret" -n .
+
 
   ############################################
   # 3. VALIDACIÓN DE CONFIGURACIÓN (ANSIBLE)
