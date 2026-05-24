@@ -50,6 +50,19 @@ jobs:
         working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform init -input=false
 
+      - name: Limpiar estado si el RG no existe en Azure
+        working-directory: ${{ steps.entorno.outputs.dir }}
+        run: |
+          RG_NAME="rg-${{ env.TF_VAR_project }}-${{ steps.entorno.outputs.env }}"
+          EXISTS=$(az group exists --name $RG_NAME)
+
+          if [ "$EXISTS" = "false" ]; then
+            echo "El RG $RG_NAME NO existe en Azure. Limpiando estado remoto..."
+            terraform state rm azurerm_resource_group.${{ steps.entorno.outputs.env }} || true
+          else
+            echo "El RG $RG_NAME existe. No se limpia el estado."
+          fi
+
       - name: Terraform Plan
         working-directory: ${{ steps.entorno.outputs.dir }}
         run: terraform plan -input=false -out=tfplan
