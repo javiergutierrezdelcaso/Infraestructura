@@ -47,7 +47,7 @@ module "app_service_pro" {
   jwt_secret_secret_uri = module.keyvault_pro.jwt_secret_secret_uri
 }
 module "network_pro" {
-  source              = "../../modules/network"
+  source              = "../modules/network"
   project             = var.project
   environment         = "pro"
   location            = var.location
@@ -55,7 +55,7 @@ module "network_pro" {
 }
 
 module "log_analytics_pro" {
-  source              = "../../modules/log_analytics"
+  source              = "../modules/log_analytics"
   project             = var.project
   environment         = "pro"
   location            = var.location
@@ -63,7 +63,7 @@ module "log_analytics_pro" {
 }
 
 module "keyvault_pro" {
-  source                        = "../../modules/keyvault"
+  source                        = "../modules/keyvault"
   project                       = var.project
   environment                   = "pro"
   location                      = var.location
