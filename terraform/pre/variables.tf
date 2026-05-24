@@ -41,3 +41,6 @@ variable "sku_name" {
   type    = string
   default = "B1"
 }
+variable "client_object_id" {
+  type = string
+}

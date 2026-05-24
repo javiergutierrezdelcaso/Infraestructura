@@ -1,22 +1,33 @@
 resource "azurerm_key_vault" "this" {
-  name                = "kv-${var.project}-${var.environment}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tenant_id           = var.tenant_id
-  sku_name            = "standard"
-
-  purge_protection_enabled   = true
-  soft_delete_retention_days = 7
-
-  public_network_access_enabled = false
+  name                          = "kv-${var.project}-${var.environment}"
+  location                      = var.location
+  resource_group_name           = var.resource_group_name
+  tenant_id                     = var.tenant_id
+  sku_name                      = "standard"
+  soft_delete_retention_days    = 7
+  purge_protection_enabled      = false
+  public_network_access_enabled = true
 
   network_acls {
     default_action = "Deny"
     bypass         = "AzureServices"
+  }
 
-    ip_rules = []
+  access_policy {
+    tenant_id = var.tenant_id
+    object_id = var.client_object_id
+
+    secret_permissions = [
+      "Get",
+      "Set",
+      "List",
+      "Delete",
+      "Recover",
+      "Purge"
+    ]
   }
 }
+
 
 resource "azurerm_private_endpoint" "this" {
   name                = "${var.project}-${var.environment}-kv-pe"

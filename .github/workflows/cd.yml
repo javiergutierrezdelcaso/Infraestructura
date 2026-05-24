@@ -1,7 +1,11 @@
+
 name: CD - Infraestructura
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI - Infraestructura"]
+    types:
+      - completed
     branches: ["develop", "main"]
 
 permissions:
