@@ -79,15 +79,3 @@ module "app_service_pro" {
   location            = var.location
   resource_group_name = azurerm_resource_group.pro.name
 }
-
-###############################################
-# OUTPUTS
-###############################################
-
-output "pre_app_url" {
-  value = module.app_service_pre.app_url
-}
-
-output "pro_app_url" {
-  value = module.app_service_pro.app_url
-}

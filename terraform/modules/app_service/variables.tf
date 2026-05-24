@@ -1,20 +1,15 @@
-variable "app_name" { type = string }
-variable "location" { type = string }
-variable "resource_group" { type = string }
-variable "app_env" { type = string }
-variable "sku_name" { type = string }
-
-variable "ghcr_token_secret_uri" {
-  type    = string
-  default = null
+variable "project" {
+  type = string
 }
 
-variable "api_key_secret_uri" {
-  type    = string
-  default = null
+variable "environment" {
+  type = string
 }
 
-variable "jwt_secret_secret_uri" {
-  type    = string
-  default = null
+variable "location" {
+  type = string
+}
+
+variable "resource_group_name" {
+  type = string
 }
