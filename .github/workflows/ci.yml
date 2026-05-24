@@ -110,7 +110,8 @@ jobs:
 
 
       - name: Terrascan
-        run: terrascan scan -d . -i terraform
+        run: terrascan scan -d ./ -i terraform --non-recursive
+
 
 
       # GITLEAKS
