@@ -12,3 +12,7 @@ variable "subnet_id" { type = string }
 variable "log_analytics_workspace_id" { type = string }
 
 variable "secrets_expiration_date" { type = string }
+variable "client_object_id" {
+  type        = string
+  description = "Object ID del Service Principal que necesita permisos en el Key Vault"
+}
