@@ -11,7 +11,7 @@ provider "azurerm" {
 ############################################
 
 module "keyvault_pre" {
-  source = "../../modules/keyvault"
+  source = "../modules/keyvault"
 
   project             = var.project
   environment         = "pre"
@@ -35,7 +35,7 @@ module "keyvault_pre" {
 ############################################
 
 module "app_service_pre" {
-  source = "../../modules/app_service"
+  source = "../modules/app_service"
 
   project             = var.project
   environment         = "pre"
@@ -47,10 +47,3 @@ module "app_service_pre" {
   jwt_secret_secret_uri = module.keyvault_pre.jwt_secret_secret_uri
 }
 
-############################################
-# OUTPUTS
-############################################
-
-output "app_url" {
-  value = module.app_service_pre.app_url
-}
