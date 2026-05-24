@@ -1,14 +1,3 @@
-terraform {
-  required_version = ">= 1.6.0"
-
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 3.100"
-    }
-  }
-}
-
 resource "azurerm_key_vault" "this" {
   name                = "kv-${var.project}-${var.environment}"
   location            = var.location
@@ -19,14 +8,17 @@ resource "azurerm_key_vault" "this" {
   purge_protection_enabled   = true
   soft_delete_retention_days = 7
 
-  access_policy {
-    tenant_id = var.tenant_id
-    object_id = var.app_identity_principal_id
+  # Cumple tfsec: azure-keyvault-specify-network-acl
+  network_acls {
+    default_action = "Deny"
+    bypass         = "AzureServices"
 
-    secret_permissions = [
-      "Get",
-      "List",
-    ]
+    dynamic "ip_rules" {
+      for_each = var.allowed_ip_ranges
+      content {
+        value = ip_rules.value
+      }
+    }
   }
 }
 
@@ -34,16 +26,28 @@ resource "azurerm_key_vault_secret" "ghcr_token" {
   name         = "GHCR-TOKEN"
   value        = var.ghcr_token
   key_vault_id = azurerm_key_vault.this.id
+
+  # Cumple tfsec: azure-keyvault-content-type-for-secret
+  content_type = "text/plain"
+
+  # Cumple tfsec: azure-keyvault-ensure-secret-expiry
+  expiration_date = var.secrets_expiration_date
 }
 
 resource "azurerm_key_vault_secret" "api_key" {
   name         = "API-KEY"
   value        = var.api_key
   key_vault_id = azurerm_key_vault.this.id
+
+  content_type   = "text/plain"
+  expiration_date = var.secrets_expiration_date
 }
 
 resource "azurerm_key_vault_secret" "jwt_secret" {
   name         = "JWT-SECRET"
   value        = var.jwt_secret
   key_vault_id = azurerm_key_vault.this.id
+
+  content_type   = "text/plain"
+  expiration_date = var.secrets_expiration_date
 }
