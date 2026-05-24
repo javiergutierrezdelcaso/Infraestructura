@@ -4,7 +4,7 @@ resource "azurerm_resource_group" "pre" {
 }
 
 module "network_pre" {
-  source              = "../../modules/network"
+  source              = "../modules/network"
   project             = var.project
   environment         = "pre"
   location            = var.location
@@ -12,7 +12,7 @@ module "network_pre" {
 }
 
 module "log_pre" {
-  source              = "../../modules/log_analytics"
+  source              = "../modules/log_analytics"
   project             = var.project
   environment         = "pre"
   location            = var.location
@@ -20,7 +20,7 @@ module "log_pre" {
 }
 
 module "keyvault_pre" {
-  source                        = "../../modules/keyvault"
+  source                        = "../modules/keyvault"
   project                       = var.project
   environment                   = "pre"
   location                      = var.location
@@ -35,7 +35,7 @@ module "keyvault_pre" {
 }
 
 module "app_service_pre" {
-  source              = "../../modules/app_service"
+  source              = "../modules/app_service"
   project             = var.project
   environment         = "pre"
   location            = var.location
