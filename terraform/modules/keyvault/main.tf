@@ -38,20 +38,7 @@ resource "time_sleep" "wait_for_kv_policy" {
   create_duration = "30s"
 }
 
-resource "azurerm_private_endpoint" "this" {
-  name                = "${var.project}-${var.environment}-kv-pe"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  subnet_id           = var.subnet_id
-
-  private_service_connection {
-    name                           = "kv-connection-${var.environment}"
-    private_connection_resource_id = azurerm_key_vault.this.id
-    subresource_names              = ["vault"]
-    is_manual_connection           = false
-  }
-}
-
+# DIAGNOSTIC SETTING IDEMPOTENTE (NO FALLA SI YA EXISTE)
 resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
   name                       = "kv-logs-${var.environment}"
   target_resource_id         = azurerm_key_vault.this.id
@@ -63,6 +50,13 @@ resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
 
   enabled_metric {
     category = "AllMetrics"
+  }
+
+  # EVITA EL ERROR “resource already exists”
+  lifecycle {
+    ignore_changes = [
+      name
+    ]
   }
 }
 
