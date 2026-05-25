@@ -32,36 +32,59 @@ resource "azurerm_key_vault" "this" {
   }
 }
 
-# Espera obligatoria para que Azure propague la access policy
+# Espera para que Azure propague la access policy
 resource "time_sleep" "wait_for_kv_policy" {
-  depends_on = [azurerm_key_vault.this]
+  depends_on      = [azurerm_key_vault.this]
   create_duration = "30s"
 }
 
-# DIAGNOSTIC SETTING IDEMPOTENTE (NO FALLA SI YA EXISTE)
-resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
-  name                       = "kv-logs-${var.environment}"
-  target_resource_id         = azurerm_key_vault.this.id
-  log_analytics_workspace_id = var.log_analytics_workspace_id
+resource "azurerm_private_endpoint" "this" {
+  name                = "${var.project}-${var.environment}-kv-pe"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  subnet_id           = var.subnet_id
 
-  enabled_log {
-    category = "AuditEvent"
-  }
-
-  enabled_metric {
-    category = "AllMetrics"
-  }
-
-  lifecycle {
-    # Si ya existe, Terraform lo adopta sin fallar
-    create_before_destroy = true
-
-    # Azure a veces cambia internamente el nombre → ignorarlo evita errores
-    ignore_changes = [
-      name
-    ]
+  private_service_connection {
+    name                           = "kv-connection-${var.environment}"
+    private_connection_resource_id = azurerm_key_vault.this.id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
   }
 }
+
+# ---------- DIAGNOSTIC SETTING IDEMPOTENTE (DATA + NULL_RESOURCE) ----------
+
+# Intentamos leer el diagnostic setting; si no existe, el data fallará.
+# Por eso usamos "ignore_errors" vía local-exec en el null_resource.
+# Truco: lo hacemos todo desde null_resource con az CLI.
+
+resource "null_resource" "kv_logs" {
+  depends_on = [azurerm_key_vault.this]
+
+  provisioner "local-exec" {
+    command = <<EOT
+set -e
+
+# Intentar obtener el diagnostic setting; si no existe, az devuelve código != 0
+if az monitor diagnostic-settings show \
+  --name "kv-logs-${var.environment}" \
+  --resource "${azurerm_key_vault.this.id}" >/dev/null 2>&1; then
+  echo "Diagnostic setting kv-logs-${var.environment} ya existe, no se crea."
+else
+  echo "Diagnostic setting kv-logs-${var.environment} no existe, se crea..."
+  az monitor diagnostic-settings create \
+    --name "kv-logs-${var.environment}" \
+    --resource "${azurerm_key_vault.this.id}" \
+    --workspace "${var.log_analytics_workspace_id}" \
+    --logs '[{"category":"AuditEvent","enabled":true}]' \
+    --metrics '[{"category":"AllMetrics","enabled":true}]'
+fi
+EOT
+    interpreter = ["/bin/bash", "-c"]
+  }
+}
+
+# ---------- SECRETS (CON ESPERA PARA EVITAR 403) ----------
 
 resource "azurerm_key_vault_secret" "ghcr_token" {
   name            = "ghcr-token"
