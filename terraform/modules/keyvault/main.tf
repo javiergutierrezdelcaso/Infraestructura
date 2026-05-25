@@ -2,6 +2,7 @@
 # checkov:skip=CKV_AZURE_42: soft delete habilitado, purge protection no permitida
 # checkov:skip=CKV_AZURE_189: PNA no puede deshabilitarse en Azure for Students
 # tfsec:ignore:azure-keyvault-no-purge
+
 resource "azurerm_key_vault" "this" {
   name                          = "kv-${var.project}-${var.environment}"
   location                      = var.location
@@ -32,6 +33,11 @@ resource "azurerm_key_vault" "this" {
   }
 }
 
+# Espera obligatoria para que Azure propague la access policy
+resource "time_sleep" "wait_for_kv_policy" {
+  depends_on      = [azurerm_key_vault.this]
+  create_duration = "30s"
+}
 
 resource "azurerm_private_endpoint" "this" {
   name                = "${var.project}-${var.environment}-kv-pe"
@@ -67,10 +73,10 @@ resource "azurerm_key_vault_secret" "ghcr_token" {
   key_vault_id    = azurerm_key_vault.this.id
   content_type    = "token"
   expiration_date = var.secrets_expiration_date
-  depends_on = [
-    azurerm_key_vault.this
-  ]
 
+  depends_on = [
+    time_sleep.wait_for_kv_policy
+  ]
 }
 
 resource "azurerm_key_vault_secret" "api_key" {
@@ -79,10 +85,10 @@ resource "azurerm_key_vault_secret" "api_key" {
   key_vault_id    = azurerm_key_vault.this.id
   content_type    = "api-key"
   expiration_date = var.secrets_expiration_date
-  depends_on = [
-    azurerm_key_vault.this
-  ]
 
+  depends_on = [
+    time_sleep.wait_for_kv_policy
+  ]
 }
 
 resource "azurerm_key_vault_secret" "jwt_secret" {
@@ -91,7 +97,8 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   key_vault_id    = azurerm_key_vault.this.id
   content_type    = "jwt-secret"
   expiration_date = var.secrets_expiration_date
+
   depends_on = [
-    azurerm_key_vault.this
+    time_sleep.wait_for_kv_policy
   ]
 }
