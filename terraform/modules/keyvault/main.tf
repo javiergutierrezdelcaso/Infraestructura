@@ -1,60 +1,38 @@
 # checkov:skip=CKV_AZURE_110: purge protection no disponible en Azure for Students
 # checkov:skip=CKV_AZURE_42: soft delete habilitado, purge protection no permitida
 # checkov:skip=CKV_AZURE_189: PNA no puede deshabilitarse en Azure for Students
-# tfsec:ignore:azure-keyvault-no-purge
+# tfsec/checkov skips por limitaciones de Azure for Students
 resource "azurerm_key_vault" "this" {
-  name                          = "kv-${var.project}-${var.environment}"
-  location                      = var.location
-  resource_group_name           = var.resource_group_name
-  tenant_id                     = var.tenant_id
-  sku_name                      = "standard"
+  name                = "kv-${var.project}-${var.environment}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tenant_id           = var.tenant_id
+  sku_name            = "standard"
+
   soft_delete_retention_days    = 7
   purge_protection_enabled      = false
   public_network_access_enabled = true
-
-  network_acls {
-    default_action = "Deny"
-    bypass         = "AzureServices"
-  }
-
-  access_policy {
-    tenant_id = var.tenant_id
-    object_id = var.client_object_id # <- ESTE ES EL OBJECT ID DEL SP
-
-    secret_permissions = [
-      "Get",
-      "Set",
-      "List",
-      "Delete",
-      "Recover",
-      "Purge"
-    ]
-  }
 }
 
-# Espera para que Azure propague la access policy (evita 403)
+resource "azurerm_key_vault_access_policy" "sp_policy" {
+  key_vault_id = azurerm_key_vault.this.id
+  tenant_id    = var.tenant_id
+  object_id    = var.client_object_id
+
+  secret_permissions = [
+    "Get",
+    "Set",
+    "List",
+    "Delete",
+    "Recover",
+    "Purge"
+  ]
+}
+
 resource "time_sleep" "wait_for_kv_policy" {
-  depends_on      = [azurerm_key_vault.this]
+  depends_on      = [azurerm_key_vault_access_policy.sp_policy]
   create_duration = "30s"
 }
-
-resource "azurerm_private_endpoint" "this" {
-  name                = "${var.project}-${var.environment}-kv-pe"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  subnet_id           = var.subnet_id
-
-  private_service_connection {
-    name                           = "kv-connection-${var.environment}"
-    private_connection_resource_id = azurerm_key_vault.this.id
-    subresource_names              = ["vault"]
-    is_manual_connection           = false
-  }
-}
-
-# -------------------------------
-# NO HAY DIAGNOSTIC SETTING AQUÍ
-# -------------------------------
 
 resource "azurerm_key_vault_secret" "ghcr_token" {
   name            = "ghcr-token"
