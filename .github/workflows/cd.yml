@@ -1,4 +1,3 @@
-
 name: CD - Infraestructura
 
 on:
@@ -18,10 +17,10 @@ env:
   ARM_TENANT_ID:       ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
   ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
 
-  TF_VAR_tenant_id:           ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
-  TF_VAR_ghcr_token:          ${{ secrets.GHCR_TOKEN }}
-  TF_VAR_api_key:             ${{ secrets.API_KEY }}
-  TF_VAR_jwt_secret:          ${{ secrets.JWT_SECRET }}
+  TF_VAR_tenant_id:              ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+  TF_VAR_ghcr_token:             ${{ secrets.GHCR_TOKEN }}
+  TF_VAR_api_key:                ${{ secrets.API_KEY }}
+  TF_VAR_jwt_secret:             ${{ secrets.JWT_SECRET }}
   TF_VAR_secrets_expiration_date: "2026-12-31T00:00:00Z"
   TF_VAR_project: "ecoanalyzer"
   TF_VAR_client_object_id: "feba39ef-fae5-4cf2-8d55-08ed5e09e462"
@@ -34,6 +33,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Login Azure CLI (Service Principal)
+        run: |
+          az login --service-principal \
+            --username "${{ env.ARM_CLIENT_ID }}" \
+            --password "${{ env.ARM_CLIENT_SECRET }}" \
+            --tenant "${{ env.ARM_TENANT_ID }}"
+          az account set --subscription "${{ env.ARM_SUBSCRIPTION_ID }}"
 
       - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
@@ -51,17 +58,9 @@ jobs:
             echo "env=pro" >> $GITHUB_OUTPUT
           fi
 
-      - name: Login Azure CLI
-        run: |
-          az login --service-principal \
-            --username "${{ env.ARM_CLIENT_ID }}" \
-            --password "${{ env.ARM_CLIENT_SECRET }}" \
-            --tenant "${{ env.ARM_TENANT_ID }}"
-          az account set --subscription "${{ env.ARM_SUBSCRIPTION_ID }}"
-
       - name: terraform init
         working-directory: ${{ steps.entorno.outputs.dir }}
-        run: terraform init
+        run: terraform init -upgrade
 
       - name: Sincronizar estado del Resource Group
         working-directory: ${{ steps.entorno.outputs.dir }}
@@ -69,19 +68,16 @@ jobs:
           RG_NAME="rg-${{ env.TF_VAR_project }}-${{ steps.entorno.outputs.env }}"
           RG_ID="/subscriptions/${{ env.ARM_SUBSCRIPTION_ID }}/resourceGroups/$RG_NAME"
 
-          echo "Comprobando si el RG $RG_NAME existe en Azure..."
           EXISTS=$(az group exists --name "$RG_NAME")
 
           if [ "$EXISTS" = "true" ]; then
-            echo "El RG $RG_NAME existe en Azure."
             if terraform state list | grep -q "azurerm_resource_group.${{ steps.entorno.outputs.env }}"; then
-              echo "El RG ya está en el estado. No se hace nada."
+              echo "El RG ya está en el estado."
             else
-              echo "El RG existe en Azure pero NO está en el estado. Importando..."
               terraform import azurerm_resource_group.${{ steps.entorno.outputs.env }} "$RG_ID"
             fi
           else
-            echo "El RG $RG_NAME NO existe en Azure. Terraform lo creará en el apply."
+            echo "El RG no existe. Terraform lo creará."
           fi
 
       - name: terraform plan
