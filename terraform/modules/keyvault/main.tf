@@ -68,8 +68,9 @@ resource "azurerm_key_vault_secret" "ghcr_token" {
   content_type    = "token"
   expiration_date = var.secrets_expiration_date
   depends_on = [
-    azurerm_key_vault_access_policy.kv_policy
+  azurerm_key_vault.this
   ]
+
 }
 
 resource "azurerm_key_vault_secret" "api_key" {
@@ -79,8 +80,9 @@ resource "azurerm_key_vault_secret" "api_key" {
   content_type    = "api-key"
   expiration_date = var.secrets_expiration_date
   depends_on = [
-    azurerm_key_vault_access_policy.kv_policy
+  azurerm_key_vault.this
   ]
+
 }
 
 resource "azurerm_key_vault_secret" "jwt_secret" {
@@ -90,6 +92,6 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   content_type    = "jwt-secret"
   expiration_date = var.secrets_expiration_date
   depends_on = [
-    azurerm_key_vault_access_policy.kv_policy
+    azurerm_key_vault.this
   ]
 }
