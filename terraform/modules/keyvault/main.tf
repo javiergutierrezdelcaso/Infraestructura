@@ -62,7 +62,7 @@ resource "null_resource" "kv_logs" {
   depends_on = [azurerm_key_vault.this]
 
   provisioner "local-exec" {
-    command = <<EOT
+    command     = <<EOT
 set -e
 
 # Intentar obtener el diagnostic setting; si no existe, az devuelve código != 0
