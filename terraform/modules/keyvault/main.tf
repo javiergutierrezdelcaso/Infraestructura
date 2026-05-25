@@ -2,6 +2,7 @@
 # checkov:skip=CKV_AZURE_42: soft delete habilitado, purge protection no permitida
 # checkov:skip=CKV_AZURE_189: PNA no puede deshabilitarse en Azure for Students
 # tfsec:ignore:azure-keyvault-no-purge
+
 resource "azurerm_key_vault" "this" {
   name                          = "kv-${var.project}-${var.environment}"
   location                      = var.location
@@ -19,7 +20,7 @@ resource "azurerm_key_vault" "this" {
 
   access_policy {
     tenant_id = var.tenant_id
-    object_id = var.client_object_id
+    object_id = var.client_object_id # <- ESTE ES EL OBJECT ID DEL SP
 
     secret_permissions = [
       "Get",
@@ -52,34 +53,9 @@ resource "azurerm_private_endpoint" "this" {
   }
 }
 
-# ---------- DIAGNOSTIC SETTING IDEMPOTENTE (NO USA azurerm_monitor_diagnostic_setting) ----------
-
-resource "null_resource" "kv_logs" {
-  depends_on = [azurerm_key_vault.this]
-
-  provisioner "local-exec" {
-    command     = <<EOT
-set -e
-
-if az monitor diagnostic-settings show \
-  --name "kv-logs-${var.environment}" \
-  --resource "${azurerm_key_vault.this.id}" >/dev/null 2>&1; then
-  echo "Diagnostic setting kv-logs-${var.environment} ya existe, no se crea."
-else
-  echo "Diagnostic setting kv-logs-${var.environment} no existe, se crea..."
-  az monitor diagnostic-settings create \
-    --name "kv-logs-${var.environment}" \
-    --resource "${azurerm_key_vault.this.id}" \
-    --workspace "${var.log_analytics_workspace_id}" \
-    --logs '[{"category":"AuditEvent","enabled":true}]' \
-    --metrics '[{"category":"AllMetrics","enabled":true}]'
-fi
-EOT
-    interpreter = ["/bin/bash", "-c"]
-  }
-}
-
-# ---------- SECRETS (CON ESPERA PARA EVITAR 403) ----------
+# -------------------------------
+# NO HAY DIAGNOSTIC SETTING AQUÍ
+# -------------------------------
 
 resource "azurerm_key_vault_secret" "ghcr_token" {
   name            = "ghcr-token"
@@ -88,9 +64,7 @@ resource "azurerm_key_vault_secret" "ghcr_token" {
   content_type    = "token"
   expiration_date = var.secrets_expiration_date
 
-  depends_on = [
-    time_sleep.wait_for_kv_policy
-  ]
+  depends_on = [time_sleep.wait_for_kv_policy]
 }
 
 resource "azurerm_key_vault_secret" "api_key" {
@@ -100,9 +74,7 @@ resource "azurerm_key_vault_secret" "api_key" {
   content_type    = "api-key"
   expiration_date = var.secrets_expiration_date
 
-  depends_on = [
-    time_sleep.wait_for_kv_policy
-  ]
+  depends_on = [time_sleep.wait_for_kv_policy]
 }
 
 resource "azurerm_key_vault_secret" "jwt_secret" {
@@ -112,7 +84,5 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   content_type    = "jwt-secret"
   expiration_date = var.secrets_expiration_date
 
-  depends_on = [
-    time_sleep.wait_for_kv_policy
-  ]
+  depends_on = [time_sleep.wait_for_kv_policy]
 }
