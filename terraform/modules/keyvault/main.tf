@@ -32,7 +32,7 @@ resource "azurerm_key_vault" "this" {
   }
 }
 
-# Espera para que Azure propague la access policy
+# Espera para que Azure propague la access policy (evita 403)
 resource "time_sleep" "wait_for_kv_policy" {
   depends_on      = [azurerm_key_vault.this]
   create_duration = "30s"
@@ -52,11 +52,7 @@ resource "azurerm_private_endpoint" "this" {
   }
 }
 
-# ---------- DIAGNOSTIC SETTING IDEMPOTENTE (DATA + NULL_RESOURCE) ----------
-
-# Intentamos leer el diagnostic setting; si no existe, el data fallará.
-# Por eso usamos "ignore_errors" vía local-exec en el null_resource.
-# Truco: lo hacemos todo desde null_resource con az CLI.
+# ---------- DIAGNOSTIC SETTING IDEMPOTENTE (NO USA azurerm_monitor_diagnostic_setting) ----------
 
 resource "null_resource" "kv_logs" {
   depends_on = [azurerm_key_vault.this]
@@ -65,7 +61,6 @@ resource "null_resource" "kv_logs" {
     command     = <<EOT
 set -e
 
-# Intentar obtener el diagnostic setting; si no existe, az devuelve código != 0
 if az monitor diagnostic-settings show \
   --name "kv-logs-${var.environment}" \
   --resource "${azurerm_key_vault.this.id}" >/dev/null 2>&1; then
