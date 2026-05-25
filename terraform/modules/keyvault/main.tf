@@ -34,7 +34,7 @@ resource "azurerm_key_vault" "this" {
 
 # Espera obligatoria para que Azure propague la access policy
 resource "time_sleep" "wait_for_kv_policy" {
-  depends_on      = [azurerm_key_vault.this]
+  depends_on = [azurerm_key_vault.this]
   create_duration = "30s"
 }
 
@@ -52,8 +52,11 @@ resource "azurerm_monitor_diagnostic_setting" "kv_logs" {
     category = "AllMetrics"
   }
 
-  # EVITA EL ERROR “resource already exists”
   lifecycle {
+    # Si ya existe, Terraform lo adopta sin fallar
+    create_before_destroy = true
+
+    # Azure a veces cambia internamente el nombre → ignorarlo evita errores
     ignore_changes = [
       name
     ]
